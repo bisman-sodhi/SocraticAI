@@ -15,9 +15,10 @@ An enhanced version of Judge0 IDE with AI-powered code assistance, built on top 
 
 - Node.js (v14 or higher)
 - npm
+- Python (for running the frontend server)
 - An OpenRouter API key ([Get one here](https://openrouter.ai/))
 
-## Setup
+## Setup and Running
 
 1. Clone the repository:
    ```bash
@@ -33,33 +34,73 @@ An enhanced version of Judge0 IDE with AI-powered code assistance, built on top 
 3. Create a `.env` file in the root directory:
    ```env
    OPENROUTER_API_KEY=your_api_key_here
-   SITE_URL=http://localhost:3000
+   SITE_URL=http://localhost:8001
    ```
 
 4. Create a `js/config.js` file:
    ```javascript
    const config = {
        OPENROUTER_API_KEY: "your_api_key_here",
-       SITE_URL: "http://localhost:3000",
+       SITE_URL: "http://localhost:8001",
+       API_URL: "http://localhost:3000",
        SITE_NAME: "Judge0 IDE"
    };
 
    export default config;
    ```
 
-5. Start the development server:
+5. Start the backend server (handles AI chat):
    ```bash
    npm start
    ```
 
-6. In a separate terminal, start a local server for the frontend:
+6. In a new terminal, start the frontend server:
    ```bash
    python -m http.server 8001
    ```
 
-7. Access the IDE at `http://localhost:3000`
+7. Access the IDE at `http://localhost:8001`
+
+> Note: The application requires two servers:
+> - Backend server (port 3000): Handles AI chat functionality and API requests
+> - Frontend server (port 8001): Serves the IDE interface and static files
 
 ## Project Structure
+
+```
+├── server.js           # Express server for AI API handling
+├── js/
+│   ├── ide.js         # Main IDE logic and AI chat integration
+│   ├── config.js      # Configuration file (not committed)
+│   └── ...           # Other IDE JavaScript files
+├── css/
+│   ├── ide.css        # IDE and chat interface styling
+│   └── ...           # Other style files
+└── index.html         # Main HTML file
+```
+
+## Development
+
+The project uses:
+- Express.js for the backend proxy server
+- OpenRouter's Gemini API for AI responses
+- Monaco Editor for code editing
+- Golden Layout for UI organization
+
+## Security Note
+
+- Never commit your `.env` or `config.js` files
+- Both files are listed in `.gitignore`
+- Keep your API keys secure
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Based on [Judge0 IDE](https://github.com/judge0/ide)
+- Uses [OpenRouter](https://openrouter.ai/) for AI capabilities
 
 # Judge0 IDE
 [![Judge0 IDE Screenshot](./.github/screenshot.png)](https://ide.judge0.com)
