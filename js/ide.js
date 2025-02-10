@@ -150,10 +150,8 @@ function handleRunError(jqXHR) {
     })), "*");
 }
 
-function handleResult(data) {
+async function handleResult(data) {
     const tat = Math.round(performance.now() - timeStart);
-    console.log(`It took ${tat}ms to get submission result.`);
-
     const status = data.status;
     const stdout = decode(data.stdout);
     const compileOutput = decode(data.compile_output);
@@ -162,9 +160,40 @@ function handleResult(data) {
 
     $statusLine.html(`${status.description}, ${time}, ${memory} (TAT: ${tat}ms)`);
 
-    const output = [compileOutput, stdout].join("\n").trim();
+    // Check if it's a compilation error (status id 6)
+    if (status.id === 6) {
+        // Show error in output window
+        stdoutEditor.setValue(`Compilation Error:\n${compileOutput}`);
+        
+        // Find chat component and send error to AI
+        const chatComponent = layout.root.getItemsById("chat")[0];
+        if (chatComponent) {
+            const container = chatComponent.container;
+            const chatMessages = container.getElement().find('.chat-messages');
+            const addMessage = (content, isUser = false) => {
+                const messageDiv = $(`
+                    <div class="message ${isUser ? 'user' : 'assistant'}">
+                        ${content}
+                    </div>
+                `);
+                chatMessages.append(messageDiv);
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+            };
 
-    stdoutEditor.setValue(output);
+            // Add compilation error as system message
+            addMessage(`⚠️ Compilation Error:\n\`\`\`\n${compileOutput}\n\`\`\``, false);
+            
+            // Get and add AI suggestion
+            const suggestion = await getAISuggestion(sourceEditor.getValue(), compileOutput);
+            addMessage(suggestion, false);
+
+            // Make chat tab active
+            chatComponent.parent.header.parent.setActiveContentItem(chatComponent);
+        }
+    } else {
+        // Normal output handling
+        stdoutEditor.setValue(stdout);
+    }
 
     $runBtn.removeClass("disabled");
 
@@ -173,7 +202,7 @@ function handleResult(data) {
         status: data.status,
         time: data.time,
         memory: data.memory,
-        output: output
+        output: stdout
     })), "*");
 }
 
@@ -189,7 +218,7 @@ function getSelectedLanguageFlavor() {
     return $selectLanguage.find(":selected").attr("flavor");
 }
 
-function run() {
+async function run() {
     if (sourceEditor.getValue().trim() === "") {
         showError("Error", "Source code can't be empty!");
         return;
@@ -961,5 +990,17 @@ async function sendChatMessage(message, selectedCode = null) {
     } catch (error) {
         console.error('Chat API Error:', error);
         return "Sorry, I encountered an error processing your request.";
+    }
+}
+
+async function getAISuggestion(code, errorMessage) {
+    try {
+        const prompt = `I have this code:\n\n${code}\n\nI got this compilation error:\n${errorMessage}\n\nCan you explain what's wrong and how to fix it?`;
+        
+        const response = await sendChatMessage(prompt);
+        return response;
+    } catch (error) {
+        console.error("Error getting AI suggestion:", error);
+        return "Unable to get AI suggestion at this time.";
     }
 }

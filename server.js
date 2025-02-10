@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-require('dotenv').config();
 
 const app = express();
 
@@ -16,12 +15,18 @@ app.post('/api/chat', async (req, res) => {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                "HTTP-Referer": process.env.SITE_URL,
+                "Authorization": `Bearer ${config.OPENROUTER_API_KEY}`,
+                "HTTP-Referer": config.SITE_URL,
                 "X-Title": "Judge0 IDE",
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(req.body)
+            body: JSON.stringify({
+                model: "google/gemini-2.0-flash-thinking-exp:free",
+                messages: [{
+                    role: "system",
+                    content: "You are a helpful programming assistant. When analyzing code errors, provide clear explanations and specific fixes."
+                }, ...req.body.messages]
+            })
         });
         const data = await response.json();
         res.json(data);

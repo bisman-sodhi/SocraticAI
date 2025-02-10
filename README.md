@@ -31,35 +31,29 @@ An enhanced version of Judge0 IDE with AI-powered code assistance, built on top 
    npm install
    ```
 
-3. Create a `.env` file in the root directory:
-   ```env
-   OPENROUTER_API_KEY=your_api_key_here
-   SITE_URL=http://localhost:8001
-   ```
-
-4. Create a `js/config.js` file:
+3. Create a `js/config.js` file:
    ```javascript
    const config = {
-       OPENROUTER_API_KEY: "your_api_key_here",
-       SITE_URL: "http://localhost:8001",
-       API_URL: "http://localhost:3000",
+       OPENROUTER_API_KEY: "your_api_key_here",  // Get from openrouter.ai
+       SITE_URL: "http://localhost:8001",        // Frontend URL
+       API_URL: "http://localhost:3000",         // Backend URL
        SITE_NAME: "Judge0 IDE"
    };
 
    export default config;
    ```
 
-5. Start the backend server (handles AI chat):
+4. Start the backend server (handles AI chat):
    ```bash
    npm start
    ```
 
-6. In a new terminal, start the frontend server:
+5. In a new terminal, start the frontend server:
    ```bash
    python -m http.server 8001
    ```
 
-7. Access the IDE at `http://localhost:8001`
+6. Access the IDE at `http://localhost:8001`
 
 > Note: The application requires two servers:
 > - Backend server (port 3000): Handles AI chat functionality and API requests

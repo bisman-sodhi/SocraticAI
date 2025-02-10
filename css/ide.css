@@ -86,3 +86,41 @@
     border-radius: 4px;
     margin: 5px 0;
 }
+
+.error-suggestion {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.error-suggestion pre {
+    background: #f8f9fa;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+/* Add these styles for better error/suggestion visibility */
+.error-section {
+    background-color: #fde8e8;
+    color: #9b1c1c;
+    padding: 8px;
+    margin: 4px 0;
+    border-left: 4px solid #f05252;
+}
+
+.suggestion-section {
+    background-color: #e1effe;
+    color: #1e429f;
+    padding: 8px;
+    margin: 4px 0;
+    border-left: 4px solid #3f83f8;
+}
+
+/* Style for the section headers */
+.section-header {
+    font-weight: bold;
+    margin-bottom: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid currentColor;
+}
