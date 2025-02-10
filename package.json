@@ -1,0 +1,26 @@
+{
+  "name": "judge0-ide-chat",
+  "version": "1.0.0",
+  "description": "Judge0 IDE with AI Chat",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "node-fetch": "^3.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bisman-sodhi/SocraticAI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bisman-sodhi/SocraticAI/issues"
+  },
+  "homepage": "https://github.com/bisman-sodhi/SocraticAI#readme"
+}

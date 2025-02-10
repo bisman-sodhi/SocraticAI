@@ -1,4 +1,5 @@
 import { IS_PUTER } from "./puter.js";
+import config from './config.js';
 
 const API_KEY = ""; // Get yours at https://platform.sulu.sh/apis/judge0
 
@@ -67,28 +68,44 @@ var layoutConfig = {
             type: "column",
             content: [{
                 type: "component",
-                componentName: "stdin",
-                id: "stdin",
-                title: "Input",
+                componentName: "chat",
+                id: "chat",
+                title: "AI Assistant",
                 isClosable: false,
                 componentState: {
                     readOnly: false
                 }
             }, {
-                type: "component",
-                componentName: "stdout",
-                id: "stdout",
-                title: "Output",
-                isClosable: false,
-                componentState: {
-                    readOnly: true
-                }
+                type: "stack",
+                content: [{
+                    type: "component",
+                    componentName: "stdin",
+                    id: "stdin",
+                    title: "Input",
+                    isClosable: false,
+                    componentState: {
+                        readOnly: false
+                    }
+                }, {
+                    type: "component",
+                    componentName: "stdout",
+                    id: "stdout",
+                    title: "Output",
+                    isClosable: false,
+                    componentState: {
+                        readOnly: true
+                    }
+                }]
             }]
         }]
     }]
 };
 
 var gPuterFile;
+
+const OPENROUTER_API_KEY = config.OPENROUTER_API_KEY;
+const SITE_URL = config.SITE_URL;
+const SITE_NAME = config.SITE_NAME;
 
 function encode(str) {
     return btoa(unescape(encodeURIComponent(str || "")));
@@ -540,56 +557,127 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
 
     require(["vs/editor/editor.main"], function (ignorable) {
-        layout = new GoldenLayout(layoutConfig, $("#judge0-site-content"));
+        try {
+            layout = new GoldenLayout(layoutConfig, $("#judge0-site-content"));
 
-        layout.registerComponent("source", function (container, state) {
-            sourceEditor = monaco.editor.create(container.getElement()[0], {
-                automaticLayout: true,
-                scrollBeyondLastLine: true,
-                readOnly: state.readOnly,
-                language: "cpp",
-                fontFamily: "JetBrains Mono",
-                minimap: {
-                    enabled: true
-                }
+            layout.registerComponent("source", function (container, state) {
+                sourceEditor = monaco.editor.create(container.getElement()[0], {
+                    automaticLayout: true,
+                    scrollBeyondLastLine: true,
+                    readOnly: state.readOnly,
+                    language: "cpp",
+                    fontFamily: "JetBrains Mono",
+                    minimap: {
+                        enabled: true
+                    }
+                });
+
+                sourceEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run);
             });
 
-            sourceEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run);
-        });
-
-        layout.registerComponent("stdin", function (container, state) {
-            stdinEditor = monaco.editor.create(container.getElement()[0], {
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                readOnly: state.readOnly,
-                language: "plaintext",
-                fontFamily: "JetBrains Mono",
-                minimap: {
-                    enabled: false
-                }
+            layout.registerComponent("stdin", function (container, state) {
+                stdinEditor = monaco.editor.create(container.getElement()[0], {
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    readOnly: state.readOnly,
+                    language: "plaintext",
+                    fontFamily: "JetBrains Mono",
+                    minimap: {
+                        enabled: false
+                    }
+                });
             });
-        });
 
-        layout.registerComponent("stdout", function (container, state) {
-            stdoutEditor = monaco.editor.create(container.getElement()[0], {
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                readOnly: state.readOnly,
-                language: "plaintext",
-                fontFamily: "JetBrains Mono",
-                minimap: {
-                    enabled: false
-                }
+            layout.registerComponent("stdout", function (container, state) {
+                stdoutEditor = monaco.editor.create(container.getElement()[0], {
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    readOnly: state.readOnly,
+                    language: "plaintext",
+                    fontFamily: "JetBrains Mono",
+                    minimap: {
+                        enabled: false
+                    }
+                });
             });
-        });
 
-        layout.on("initialised", function () {
-            setDefaults();
-            refreshLayoutSize();
-            window.top.postMessage({ event: "initialised" }, "*");
-        });
+            layout.registerComponent("chat", function (container, state) {
+                const chatElement = $(`
+                    <div class="chat-container">
+                        <div class="chat-messages"></div>
+                        <div class="chat-input-area">
+                            <input type="text" placeholder="Ask a question..." class="chat-input">
+                            <button class="ui primary button chat-send">Send</button>
+                        </div>
+                    </div>
+                `);
+                
+                const chatMessages = chatElement.find('.chat-messages');
+                const chatInput = chatElement.find('.chat-input');
+                const sendButton = chatElement.find('.chat-send');
 
-        layout.init();
+                function addMessage(content, isUser = false) {
+                    const messageDiv = $(`
+                        <div class="message ${isUser ? 'user' : 'assistant'}">
+                            ${content}
+                        </div>
+                    `);
+                    chatMessages.append(messageDiv);
+                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
+                }
+
+                async function handleSend() {
+                    const message = chatInput.val().trim();
+                    if (!message) return;
+
+                    // Get selected code if any
+                    const selectedCode = sourceEditor.getModel().getValueInRange(sourceEditor.getSelection());
+
+                    // Add user message to chat
+                    addMessage(message, true);
+                    chatInput.val('');
+
+                    // Get and add AI response
+                    const response = await sendChatMessage(message, selectedCode);
+                    addMessage(response, false);
+                }
+
+                // Event handlers
+                sendButton.click(handleSend);
+                chatInput.on('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                    }
+                });
+                
+                container.getElement().append(chatElement);
+            });
+
+            layout.on("initialised", function () {
+                console.log("Layout initialized successfully");
+                setDefaults();
+                refreshLayoutSize();
+                window.top.postMessage({ event: "initialised" }, "*");
+            });
+
+            layout.on("error", function(err) {
+                console.error("Layout initialization error:", err);
+            });
+
+            layout.init();
+        } catch (error) {
+            console.error("Error during layout setup:", error);
+        }
+    });
+
+    require.config({
+        paths: {
+            "vs": "./vendor/monaco-editor-0.44.0/min/vs"
+        },
+        'vs/nls': {
+            availableLanguages: {}
+        }
     });
 
     let superKey = "⌘";
@@ -843,4 +931,35 @@ const EXTENSIONS_TABLE = {
 
 function getLanguageForExtension(extension) {
     return EXTENSIONS_TABLE[extension] || { "flavor": CE, "language_id": 43 }; // Plain Text (https://ce.judge0.com/languages/43)
+}
+
+async function sendChatMessage(message, selectedCode = null) {
+    const messages = [{
+        role: "user",
+        content: [{
+            type: "text",
+            text: selectedCode ? 
+                `Code:\n${selectedCode}\n\nQuestion: ${message}` : 
+                message
+        }]
+    }];
+
+    try {
+        const response = await fetch(`${config.SITE_URL}/api/chat`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "google/gemini-2.0-flash-thinking-exp:free",
+                messages: messages
+            })
+        });
+
+        const data = await response.json();
+        return data.choices[0].message.content;
+    } catch (error) {
+        console.error('Chat API Error:', error);
+        return "Sorry, I encountered an error processing your request.";
+    }
 }

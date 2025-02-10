@@ -1,3 +1,66 @@
+# SocraticAI - AI-Enhanced Judge0 IDE
+
+An enhanced version of Judge0 IDE with AI-powered code assistance, built on top of the original [Judge0 IDE](https://ide.judge0.com).
+
+![Judge0 IDE Screenshot](./.github/screenshot.png)
+
+## Features
+
+- **AI Chat Interface**: Ask questions about your code and get intelligent responses
+- **Code-Aware Conversations**: Select code segments and discuss them with the AI
+- **Compilation Error Assistance**: Get AI suggestions when your code fails to compile
+- **Integrated Experience**: Chat interface seamlessly integrated with the IDE layout
+
+## Prerequisites
+
+- Node.js (v14 or higher)
+- npm
+- An OpenRouter API key ([Get one here](https://openrouter.ai/))
+
+## Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/bisman-sodhi/SocraticAI.git
+   cd SocraticAI
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file in the root directory:
+   ```env
+   OPENROUTER_API_KEY=your_api_key_here
+   SITE_URL=http://localhost:3000
+   ```
+
+4. Create a `js/config.js` file:
+   ```javascript
+   const config = {
+       OPENROUTER_API_KEY: "your_api_key_here",
+       SITE_URL: "http://localhost:3000",
+       SITE_NAME: "Judge0 IDE"
+   };
+
+   export default config;
+   ```
+
+5. Start the development server:
+   ```bash
+   npm start
+   ```
+
+6. In a separate terminal, start a local server for the frontend:
+   ```bash
+   python -m http.server 8001
+   ```
+
+7. Access the IDE at `http://localhost:3000`
+
+## Project Structure
+
 # Judge0 IDE
 [![Judge0 IDE Screenshot](./.github/screenshot.png)](https://ide.judge0.com)
 
