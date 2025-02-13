@@ -56,7 +56,7 @@ var layoutConfig = {
         type: "row",
         content: [{
             type: "component",
-            width: 66,
+            width: 50,
             componentName: "source",
             id: "source",
             title: "Source Code",
@@ -68,35 +68,34 @@ var layoutConfig = {
             type: "column",
             content: [{
                 type: "component",
-                componentName: "chat",
-                id: "chat",
-                title: "AI Assistant",
+                componentName: "stdin",
+                id: "stdin",
+                title: "Input",
                 isClosable: false,
                 componentState: {
                     readOnly: false
                 }
             }, {
-                type: "stack",
-                content: [{
-                    type: "component",
-                    componentName: "stdin",
-                    id: "stdin",
-                    title: "Input",
-                    isClosable: false,
-                    componentState: {
-                        readOnly: false
-                    }
-                }, {
-                    type: "component",
-                    componentName: "stdout",
-                    id: "stdout",
-                    title: "Output",
-                    isClosable: false,
-                    componentState: {
-                        readOnly: true
-                    }
-                }]
-            }]
+                type: "component",
+                componentName: "stdout",
+                id: "stdout",
+                title: "Output",
+                isClosable: false,
+                componentState: {
+                    readOnly: false
+                }
+            },
+        ]
+        }, {
+            type: "component",
+            width: 30,
+            componentName: "chat",
+            id: "chat",
+            title: "AI Assistant",
+            isClosable: false,
+            componentState: {
+                readOnly: false
+            }
         }]
     }]
 };
