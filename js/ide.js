@@ -150,60 +150,42 @@ function handleRunError(jqXHR) {
     })), "*");
 }
 
-async function handleResult(data) {
-    const tat = Math.round(performance.now() - timeStart);
-    const status = data.status;
-    const stdout = decode(data.stdout);
-    const compileOutput = decode(data.compile_output);
-    const time = (data.time === null ? "-" : data.time + "s");
-    const memory = (data.memory === null ? "-" : data.memory + "KB");
+function handleResult(data) {
+    const executionTime = Math.round(performance.now() - timeStart);  // Calculate time difference
+    
+    // Check if compilation error
+    if (data.status.id === 6) { // Status ID 6 is typically Compilation Error
+        handleCompileError(data);
+        return;
+    }
 
-    $statusLine.html(`${status.description}, ${time}, ${memory} (TAT: ${tat}ms)`);
+    let stdout = decode(data.stdout || "");
+    let stderr = decode(data.stderr || "");
+    let compile_output = decode(data.compile_output || "");
+    let message = decode(data.message || "");
+    let time = (data.time === null ? "-" : data.time + "s");
+    let memory = (data.memory === null ? "-" : data.memory + "KB");
 
-    // Check if it's a compilation error (status id 6)
-    if (status.id === 6) {
-        // Show error in output window
-        stdoutEditor.setValue(`Compilation Error:\n${compileOutput}`);
-        
-        // Find chat component and send error to AI
-        const chatComponent = layout.root.getItemsById("chat")[0];
-        if (chatComponent) {
-            const container = chatComponent.container;
-            const chatMessages = container.getElement().find('.chat-messages');
-            const addMessage = (content, isUser = false) => {
-                const messageDiv = $(`
-                    <div class="message ${isUser ? 'user' : 'assistant'}">
-                        ${content}
-                    </div>
-                `);
-                chatMessages.append(messageDiv);
-                chatMessages.scrollTop(chatMessages[0].scrollHeight);
-            };
+    $statusLine.html(`${data.status.description}, ${time}, ${memory}, TAT: ${executionTime}ms`);
 
-            // Add compilation error as system message
-            addMessage(`⚠️ Compilation Error:\n\`\`\`\n${compileOutput}\n\`\`\``, false);
-            
-            // Get and add AI suggestion
-            const suggestion = await getAISuggestion(sourceEditor.getValue(), compileOutput);
-            addMessage(suggestion, false);
+    if (stdout === "" && stderr === "" && compile_output === "" && message === "") {
+        stdout = "No output";
+    }
 
-            // Make chat tab active
-            chatComponent.parent.header.parent.setActiveContentItem(chatComponent);
-        }
-    } else {
-        // Normal output handling
-        stdoutEditor.setValue(stdout);
+    stdoutEditor.setValue(stdout + stderr + compile_output + message);
+    
+    window.top.postMessage(JSON.parse(JSON.stringify({
+        event: "postExecution",
+        stdout: stdout,
+        stderr: stderr
+    })), "*");
+
+    if (!data.status.id) {
+        handleRunError(data);
+        return;
     }
 
     $runBtn.removeClass("disabled");
-
-    window.top.postMessage(JSON.parse(JSON.stringify({
-        event: "postExecution",
-        status: data.status,
-        time: data.time,
-        memory: data.memory,
-        output: stdout
-    })), "*");
 }
 
 async function getSelectedLanguage() {
@@ -646,7 +628,6 @@ document.addEventListener("DOMContentLoaded", async function () {
                 const sendButton = chatElement.find('.chat-send');
 
                 function parseMarkdown(text) {
-                    // Initialize marked with options
                     marked.setOptions({
                         highlight: function(code, language) {
                             if (language && hljs.getLanguage(language)) {
@@ -888,14 +869,12 @@ async function sendChatMessage(message, selectedCode = null) {
     // Get entire source code if nothing is selected
     const codeToAnalyze = selectedCode || sourceEditor.getValue();
 
+    // Simplify the message format
     const messages = [{
         role: "user",
-        content: [{
-            type: "text",
-            text: codeToAnalyze ? 
-                `Code:\n${codeToAnalyze}\n\nQuestion: ${message}` : 
-                message
-        }]
+        content: codeToAnalyze ? 
+            `Code:\n${codeToAnalyze}\n\nQuestion: ${message}` : 
+            message
     }];
 
     try {
@@ -920,12 +899,101 @@ async function sendChatMessage(message, selectedCode = null) {
 
 async function getAISuggestion(code, errorMessage) {
     try {
-        const prompt = `I have this code:\n\n${code}\n\nI got this compilation error:\n${errorMessage}\n\nCan you explain what's wrong and how to fix it?`;
+        const prompt = `As a programming assistant, analyze this code and error:
+
+Code:
+${code}
+
+Error:
+${errorMessage}
+
+Please provide a response in this format:
+1. Error Location: Specify the exact line number and what's wrong
+2. Incorrect Line: Show the problematic line
+3. Corrected Line: Show how the line should be written
+4. Explanation: Briefly explain why this fix works
+
+Format your response in markdown.`;
         
         const response = await sendChatMessage(prompt);
+        
+        // The response will be automatically formatted by our existing markdown parser
         return response;
     } catch (error) {
         console.error("Error getting AI suggestion:", error);
         return "Unable to get AI suggestion at this time.";
+    }
+}
+
+function handleCompileError(response) {
+    let stderr = decode(response.compile_output || "");  // Make sure to decode the compile output
+    
+    // Update the output
+    stdoutEditor.setValue(`Compilation Error:\n${stderr}`);
+    
+    // Reset the status line and run button
+    $statusLine.html("Compilation Error");
+    $runBtn.removeClass("disabled");
+    
+    // Get the chat component early to show loading state
+    const chatComponent = layout.root.getItemsById('chat')[0];
+    if (chatComponent) {
+        const chatMessages = chatComponent.container.getElement().find('.chat-messages');
+        
+        // Add loading message
+        const loadingDiv = $(`
+            <div class="loading-message">
+                Suggesting fix<span class="loading-dots"></span>
+            </div>
+        `);
+        chatMessages.append(loadingDiv);
+        chatMessages.scrollTop(chatMessages[0].scrollHeight);
+        
+        // Make chat tab active immediately
+        chatComponent.parent.header.parent.setActiveContentItem(chatComponent);
+        
+        // Get AI suggestion for the error
+        getAISuggestion(sourceEditor.getValue(), stderr)
+            .then(suggestion => {
+                // Remove loading message
+                loadingDiv.remove();
+                
+                // Create and append the error message
+                const errorDiv = $(`
+                    <div class="message assistant">
+                        ${parseMarkdown(suggestion)}
+                    </div>
+                `);
+                chatMessages.append(errorDiv);
+                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+
+                // Initialize syntax highlighting for code blocks
+                errorDiv.find('pre code').each(function(i, block) {
+                    hljs.highlightElement(block);
+                });
+            });
+    }
+}
+
+// Make parseMarkdown available globally
+function parseMarkdown(text) {
+    marked.setOptions({
+        highlight: function(code, language) {
+            if (language && hljs.getLanguage(language)) {
+                return hljs.highlight(code, { language }).value;
+            }
+            return code;
+        },
+        breaks: true,
+        gfm: true,
+        headerIds: false,
+        mangle: false
+    });
+
+    try {
+        return marked.parse(text);
+    } catch (error) {
+        console.error('Markdown parsing error:', error);
+        return text;
     }
 }
