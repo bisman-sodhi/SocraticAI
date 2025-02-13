@@ -645,14 +645,45 @@ document.addEventListener("DOMContentLoaded", async function () {
                 const chatInput = chatElement.find('.chat-input');
                 const sendButton = chatElement.find('.chat-send');
 
+                function parseMarkdown(text) {
+                    // Initialize marked with options
+                    marked.setOptions({
+                        highlight: function(code, language) {
+                            if (language && hljs.getLanguage(language)) {
+                                return hljs.highlight(code, { language }).value;
+                            }
+                            return code;
+                        },
+                        breaks: true,
+                        gfm: true,
+                        headerIds: false,
+                        mangle: false
+                    });
+
+                    try {
+                        return marked.parse(text);
+                    } catch (error) {
+                        console.error('Markdown parsing error:', error);
+                        return text;
+                    }
+                }
+                // Add message to chat
+                // This is the message received from the assistant
                 function addMessage(content, isUser = false) {
                     const messageDiv = $(`
                         <div class="message ${isUser ? 'user' : 'assistant'}">
-                            ${content}
+                            ${isUser ? content : parseMarkdown(content)}
                         </div>
                     `);
                     chatMessages.append(messageDiv);
                     chatMessages.scrollTop(chatMessages[0].scrollHeight);
+
+                    // Initialize syntax highlighting for code blocks
+                    if (!isUser) {
+                        messageDiv.find('pre code').each(function(i, block) {
+                            hljs.highlightElement(block);
+                        });
+                    }
                 }
 
                 async function handleSend() {
@@ -666,9 +697,23 @@ document.addEventListener("DOMContentLoaded", async function () {
                     addMessage(message, true);
                     chatInput.val('');
 
-                    // Get and add AI response
-                    const response = await sendChatMessage(message, selectedCode);
-                    addMessage(response, false);
+                    // Add loading indicator
+                    const loadingDiv = $(`
+                        <div class="loading-message">
+                            Generating<span class="loading-dots"></span>
+                        </div>
+                    `);
+                    chatMessages.append(loadingDiv);
+                    chatMessages.scrollTop(chatMessages[0].scrollHeight);
+
+                    try {
+                        const response = await sendChatMessage(message, selectedCode);
+                        loadingDiv.remove();
+                        addMessage(response, false);
+                    } catch (error) {
+                        loadingDiv.remove();
+                        addMessage("Sorry, I encountered an error. Please try again.", false);
+                    }
                 }
 
                 // Event handlers
@@ -860,7 +905,7 @@ async function sendChatMessage(message, selectedCode = null) {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "meta-llama/llama-3.2-11b-vision-instruct:free",
+                model: "deepseek/deepseek-r1-distill-llama-70b:free",
                 messages: messages
             })
         });

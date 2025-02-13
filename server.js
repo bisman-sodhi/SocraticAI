@@ -28,7 +28,7 @@ import('./js/config.js').then(config => {
                 method: "POST",
                 headers: headers,
                 body: JSON.stringify({
-                    model: "meta-llama/llama-3.2-11b-vision-instruct:free",
+                    model: "deepseek/deepseek-r1-distill-llama-70b:free",
                     messages: [{
                         role: "system",
                         content: "You are a helpful programming assistant."
