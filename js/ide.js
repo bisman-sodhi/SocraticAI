@@ -2,6 +2,7 @@ import { IS_PUTER } from "./puter.js";
 import config from './config.js';
 import { DEFAULT_SOURCE, DEFAULT_STDIN } from "./default_code.js";
 const API_KEY = ""; // Get yours at https://platform.sulu.sh/apis/judge0
+const API_URL = "http://localhost:3000"; // Remove from config.js if it's there
 
 const AUTH_HEADERS = API_KEY ? {
     "Authorization": `Bearer ${API_KEY}`
@@ -839,18 +840,21 @@ function getLanguageForExtension(extension) {
 }
 
 async function sendChatMessage(message, selectedCode = null) {
+    // Get entire source code if nothing is selected
+    const codeToAnalyze = selectedCode || sourceEditor.getValue();
+
     const messages = [{
         role: "user",
         content: [{
             type: "text",
-            text: selectedCode ? 
-                `Code:\n${selectedCode}\n\nQuestion: ${message}` : 
+            text: codeToAnalyze ? 
+                `Code:\n${codeToAnalyze}\n\nQuestion: ${message}` : 
                 message
         }]
     }];
 
     try {
-        const response = await fetch(`${config.API_URL}/api/chat`, {
+        const response = await fetch(`${API_URL}/api/chat`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

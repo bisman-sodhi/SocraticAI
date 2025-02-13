@@ -14,26 +14,24 @@ import('./js/config.js').then(config => {
     // Chat endpoint
     app.post('/api/chat', async (req, res) => {
         try {
-            console.log('Sending request to OpenRouter with config:', {
-                apiKey: config.default.OPENROUTER_API_KEY ? 'Present' : 'Missing',
-                siteUrl: config.default.SITE_URL,
-                model: "meta-llama/llama-3.2-11b-vision-instruct:free"
-            });
+            const headers = {
+                "Authorization": `Bearer ${config.default.OPENROUTER_API_KEY}`,
+                "HTTP-Referer": config.default.SITE_URL,
+                "X-Title": "Judge0 IDE",
+                "Content-Type": "application/json",
+                "OpenAI-Organization": "Judge0 IDE"
+            };
+
+            console.log('Request Headers:', headers);  // Add this to see exact headers
 
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${config.default.OPENROUTER_API_KEY}`,
-                    "HTTP-Referer": config.default.SITE_URL,
-                    "X-Title": "Judge0 IDE",
-                    "Content-Type": "application/json",
-                    "OpenAI-Organization": "Judge0 IDE"
-                },
+                headers: headers,
                 body: JSON.stringify({
                     model: "meta-llama/llama-3.2-11b-vision-instruct:free",
                     messages: [{
                         role: "system",
-                        content: "You are a helpful programming assistant. When analyzing code errors, provide clear explanations and specific fixes."
+                        content: "You are a helpful programming assistant."
                     }, ...req.body.messages]
                 })
             });
