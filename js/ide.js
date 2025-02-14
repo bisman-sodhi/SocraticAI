@@ -970,7 +970,9 @@ ${code}
 Error:
 ${errorMessage}
 
+
 Please provide a response in this format:
+<h1>Suggestion</h1>
 1. Error Location: Specify the exact line number and what's wrong
 2. Incorrect Line: Show the problematic line
 3. Corrected Line: Show how the line should be written
