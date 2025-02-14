@@ -14,26 +14,15 @@ import('./js/config.js').then(config => {
     // Chat endpoint
     app.post('/api/chat', async (req, res) => {
         try {
-            const headers = {
-                "Authorization": `Bearer ${config.default.OPENROUTER_API_KEY}`,
-                "HTTP-Referer": config.default.SITE_URL,
-                "X-Title": "Judge0 IDE",
-                "Content-Type": "application/json",
-                "OpenAI-Organization": "Judge0 IDE"
-            };
-
-            console.log('Request Headers:', headers);  // Add this to see exact headers
-
             const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
-                headers: headers,
-                body: JSON.stringify({
-                    model: "deepseek/deepseek-r1-distill-llama-70b:free",
-                    messages: [{
-                        role: "system",
-                        content: "You are a helpful programming assistant."
-                    }, ...req.body.messages]
-                })
+                headers: {
+                    "Authorization": req.headers.authorization,
+                    "HTTP-Referer": req.headers["http-referer"],
+                    "X-Title": req.headers["x-title"],
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(req.body)
             });
 
             if (!response.ok) {

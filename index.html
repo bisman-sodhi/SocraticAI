@@ -132,6 +132,38 @@
                 <i class="play icon"></i>Run Code
             </button>
         </div>
+        <div class="item">
+            <div class="ui dropdown labeled icon button" id="judge0-api-key-btn">
+                <i class="key icon"></i>
+                <span class="text">OpenRouter API Key</span>
+                <div class="menu">
+                    <div class="header">Set API Key</div>
+                    <div class="item" data-value="api-key">
+                        <i class="key icon"></i>Configure API Key
+                    </div>
+                    <div class="divider"></div>
+                    <div class="header">Select Model</div>
+                    <div class="item" data-value="google/gemini-2.0-flash-thinking-exp-1219:free">
+                        <i class="google icon"></i>Gemini 2.0
+                    </div>
+                    <div class="item" data-value="nvidia/llama-3.1-nemotron-70b-instruct:free">
+                        <i class="microchip icon"></i>Nvidia Nemotron-70B
+                    </div>
+                    <div class="item" data-value="deepseek/deepseek-r1-distill-llama-70b:free">
+                        <i class="brain icon"></i>DeepSeek-70B
+                    </div>
+                    <div class="item" data-value="meta-llama/llama-3.3-70b-instruct:free">
+                        <i class="facebook icon"></i>Llama 3 70B
+                    </div>
+                    <div class="item" data-value="mistralai/mistral-small-24b-instruct-2501:free">
+                        <i class="wind icon"></i>Mistral 24B
+                    </div>
+                    <div class="item" data-value="cognitivecomputations/dolphin3.0-mistral-24b:free">
+                        <i class="water icon"></i>Dolphin Mistral 24B
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="right menu">
             <div id="judge0-theme-toggle-btn" class="icon link item" data-content="">
                 <i id="judge0-theme-toggle-btn-icon" class="sun icon"></i>
@@ -182,5 +214,27 @@
         window.marked = marked;
         window.hljs = hljs;
     </script>
+
+    <!-- Add modal for API key -->
+    <div id="judge0-api-key-modal" class="ui tiny modal">
+        <div class="header">
+            Set OpenRouter API Key
+        </div>
+        <div class="content">
+            <div class="ui form">
+                <div class="field">
+                    <label>API Key</label>
+                    <input type="password" id="judge0-api-key-input" placeholder="sk-or-v1-...">
+                </div>
+                <p class="description">
+                    Get your API key from <a href="https://openrouter.ai/keys" target="_blank">OpenRouter</a>
+                </p>
+            </div>
+        </div>
+        <div class="actions">
+            <div class="ui cancel button">Cancel</div>
+            <div class="ui approve primary button">Save</div>
+        </div>
+    </div>
 </body>
 </html>

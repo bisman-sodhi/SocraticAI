@@ -1,6 +1,8 @@
 import { IS_PUTER } from "./puter.js";
 import config from './config.js';
 import { DEFAULT_SOURCE, DEFAULT_STDIN } from "./default_code.js";
+import { getStoredApiKey, setStoredApiKey, getSelectedModel, setSelectedModel } from './local_storage.js';
+import { AI_MODELS, DEFAULT_MODEL } from './models.js';
 const API_KEY = ""; // Get yours at https://platform.sulu.sh/apis/judge0
 const API_URL = "http://localhost:3000"; // Remove from config.js if it's there
 
@@ -798,6 +800,53 @@ document.addEventListener("DOMContentLoaded", async function () {
             }
         }
     };
+
+    // Add API key modal handling
+    $(document).ready(function() {
+        // Generate model menu items
+        const $dropdown = $('#judge0-api-key-btn .menu');
+        $dropdown.empty();
+        
+        // Add API key configuration item
+        $dropdown.append(`
+            <div class="header">Set API Key</div>
+            <div class="item" data-value="api-key">
+                <i class="key icon"></i>Configure API Key
+            </div>
+            <div class="divider"></div>
+            <div class="header">Select Model</div>
+        `);
+        
+        // Add model items
+        AI_MODELS.forEach(model => {
+            $dropdown.append(`
+                <div class="item" data-value="${model.id}">
+                    <i class="${model.icon} icon"></i>${model.name}
+                </div>
+            `);
+        });
+
+        // Initialize dropdown with current model
+        const currentModel = getSelectedModel();
+        console.log('Initial model:', currentModel);
+
+        // Initialize dropdown
+        $('#judge0-api-key-btn.ui.dropdown').dropdown({
+            onChange: function(value) {
+                console.log('Dropdown value changed to:', value);
+                if (value === 'api-key') {
+                    $('#judge0-api-key-modal').modal('show');
+                } else {
+                    setSelectedModel(value);
+                    console.log('Model updated in storage:', getSelectedModel());
+                }
+            }
+        });
+
+        // Set initial selected model
+        $('#judge0-api-key-btn.ui.dropdown').dropdown('set selected', currentModel);
+        console.log('Dropdown initialized with:', currentModel);
+    });
 });
 
 const DEFAULT_COMPILER_OPTIONS = "";
@@ -866,30 +915,43 @@ function getLanguageForExtension(extension) {
 }
 
 async function sendChatMessage(message, selectedCode = null) {
+    const apiKey = getStoredApiKey();
+    if (!apiKey) {
+        $('#judge0-api-key-modal').modal('show');
+        throw new Error("Please set your OpenRouter API key");
+    }
+
+    const selectedModel = getSelectedModel();
+    console.log('Using model for chat:', selectedModel);
+
     // Get entire source code if nothing is selected
     const codeToAnalyze = selectedCode || sourceEditor.getValue();
-
-    // Simplify the message format
-    const messages = [{
-        role: "user",
-        content: codeToAnalyze ? 
-            `Code:\n${codeToAnalyze}\n\nQuestion: ${message}` : 
-            message
-    }];
 
     try {
         const response = await fetch(`${API_URL}/api/chat`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+                "HTTP-Referer": window.location.origin,
+                "X-Title": "Judge0 IDE"
             },
             body: JSON.stringify({
-                model: "deepseek/deepseek-r1-distill-llama-70b:free",
-                messages: messages
+                model: selectedModel,
+                messages: [{
+                    role: "system",
+                    content: `You are an AI programming assistant powered by ${selectedModel}. When asked about your identity, make sure to accurately state this.`
+                }, {
+                    role: "user",
+                    content: codeToAnalyze ? 
+                        `Code:\n${codeToAnalyze}\n\nQuestion: ${message}` : 
+                        message
+                }]
             })
         });
 
         const data = await response.json();
+        console.log('Response received from model:', selectedModel);
         return data.choices[0].message.content;
     } catch (error) {
         console.error('Chat API Error:', error);
@@ -899,7 +961,8 @@ async function sendChatMessage(message, selectedCode = null) {
 
 async function getAISuggestion(code, errorMessage) {
     try {
-        const prompt = `As a programming assistant, analyze this code and error:
+        const selectedModel = getSelectedModel();
+        const prompt = `As a programming assistant powered by ${selectedModel}, analyze this code and error:
 
 Code:
 ${code}
@@ -916,8 +979,6 @@ Please provide a response in this format:
 Format your response in markdown.`;
         
         const response = await sendChatMessage(prompt);
-        
-        // The response will be automatically formatted by our existing markdown parser
         return response;
     } catch (error) {
         console.error("Error getting AI suggestion:", error);

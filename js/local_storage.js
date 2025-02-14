@@ -36,3 +36,21 @@ const ls = {
 };
 
 export default ls;
+
+export function getStoredApiKey() {
+    return localStorage.getItem('openrouter_api_key');
+}
+
+export function setStoredApiKey(key) {
+    localStorage.setItem('openrouter_api_key', key);
+}
+
+import { DEFAULT_MODEL } from './models.js';
+
+export function getSelectedModel() {
+    return localStorage.getItem('openrouter_model') || DEFAULT_MODEL;
+}
+
+export function setSelectedModel(model) {
+    localStorage.setItem('openrouter_model', model);
+}

@@ -207,3 +207,76 @@
     margin: 16px 0 8px 0;
     color: #fff;
 }
+
+/* API Key Modal Styling */
+#judge0-api-key-modal {
+    background: #1e1e1e;
+    color: #ffffff;
+    border: 1px solid #333;
+}
+
+#judge0-api-key-modal .header {
+    background: #2d2d2d;
+    color: #ffffff;
+    border-bottom: 1px solid #333;
+}
+
+#judge0-api-key-modal .content {
+    background: #1e1e1e;
+}
+
+#judge0-api-key-modal input {
+    background: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #444;
+}
+
+#judge0-api-key-modal input:focus {
+    border-color: #666;
+}
+
+#judge0-api-key-modal .description {
+    color: #888;
+}
+
+#judge0-api-key-modal .description a {
+    color: #4183c4;
+}
+
+#judge0-api-key-modal .actions {
+    background: #2d2d2d;
+    border-top: 1px solid #333;
+}
+
+/* Dropdown Styling */
+#judge0-api-key-btn.ui.dropdown {
+    background: #ffffff;
+    color: #1e1e1e;
+}
+
+#judge0-api-key-btn .text {
+    color: #1e1e1e;
+}
+
+#judge0-api-key-btn i.icon {
+    color: #1e1e1e;
+}
+
+#judge0-api-key-btn .menu {
+    background: #ffffff;
+    border: 1px solid #ddd;
+}
+
+#judge0-api-key-btn .menu .item {
+    color: #1e1e1e;
+    border-top: 1px solid #eee;
+}
+
+#judge0-api-key-btn .menu .header {
+    color: #666;
+    background: #f5f5f5;
+}
+
+#judge0-api-key-btn .menu .item:hover {
+    background: rgba(0,0,0,0.05);
+}
