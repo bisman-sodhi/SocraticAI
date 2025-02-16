@@ -281,83 +281,148 @@
     background: rgba(0,0,0,0.05);
 }
 
-.suggestion-widget {
-    background: #1e1e1e;
-    border: 1px solid #454545;
-    border-radius: 3px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
-    color: #d4d4d4;
+/* Remove all the old suggestion-widget related CSS */
+.suggestion-widget,
+.suggestion-content,
+.suggestion-header,
+.suggestion-diff,
+.line-old,
+.line-new,
+.delete-marker,
+.add-marker,
+.suggestion-actions,
+.accept-btn,
+.reject-btn {
+    display: none;  /* Hide old styles */
+}
+
+/* Add these new styles */
+.inline-diff-widget {
     font-family: 'JetBrains Mono', monospace;
-    margin: 8px 0;
-    max-width: 600px;
-    position: relative;
-    z-index: 50;
-}
-
-.suggestion-content {
-    padding: 8px;
-}
-
-.suggestion-header {
-    color: #cccccc;
     font-size: 12px;
-    margin-bottom: 8px;
-}
-
-.suggestion-diff {
+    line-height: 1.5;
+    width: 100%;
     background: #1e1e1e;
-    border-radius: 3px;
-    font-size: 12px;
-    margin-bottom: 8px;
-    padding: 4px;
 }
 
-.line-old {
-    color: #f14c4c;
-    margin-bottom: 4px;
-}
-
-.line-new {
-    color: #49cc49;
-}
-
-.delete-marker, .add-marker {
-    display: inline-block;
-    margin-right: 8px;
-    opacity: 0.6;
-}
-
-.suggestion-actions {
+.diff-lines {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
 }
 
-.suggestion-actions button {
-    background: #2d2d2d;
-    border: 1px solid #454545;
+.diff-line {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    position: relative;
+}
+
+.line-number {
+    width: 50px;
+    padding: 0 8px;
+    color: #6e7681;
+    text-align: right;
+    user-select: none;
+    border-right: 1px solid #333;
+}
+
+.line-content {
+    padding: 4px 8px;
+    flex: 1;
+    white-space: pre;
+}
+
+.diff-line.error {
+    background-color: rgba(248, 81, 73, 0.15);
+}
+
+.diff-line.error .line-content {
+    color: #f85149;
+}
+
+.diff-line.suggestion {
+    background-color: rgba(63, 185, 80, 0.15);
+}
+
+.diff-line.suggestion .line-content {
+    color: #3fb950;
+}
+
+.diff-accept {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: 1px solid #3fb950;
+    color: #3fb950;
     border-radius: 3px;
-    color: #cccccc;
+    padding: 2px 8px;
+    font-size: 11px;
     cursor: pointer;
-    font-size: 12px;
-    padding: 4px 12px;
-    transition: all 0.2s;
+    opacity: 0;
+    transition: opacity 0.2s;
 }
 
-.accept-btn:hover {
-    background: #388e3c;
-    border-color: #4caf50;
+.diff-line.suggestion:hover .diff-accept {
+    opacity: 1;
 }
 
-.reject-btn:hover {
-    background: #d32f2f;
-    border-color: #f44336;
+.diff-accept:hover {
+    background: rgba(63, 185, 80, 0.2);
 }
 
-.errorLineDecoration {
-    background: rgba(255,0,0,0.1);
+.diff-btn {
+    background: transparent;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
 }
 
-.errorGlyphMargin {
-    background: #f44336;
-    width: 4px !important;
+.diff-btn.accept {
+    color: #3fb950;
+    border: 1px solid #3fb950;
+}
+
+.diff-btn.accept:hover {
+    background: rgba(63, 185, 80, 0.2);
+}
+
+.diff-btn.reject {
+    color: #888;
+}
+
+.diff-btn.reject:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.error-line {
+    background-color: rgba(248, 81, 73, 0.15) !important;
+    color: #f85149 !important;
+}
+
+.suggestion-line {
+    background-color: rgba(63, 185, 80, 0.15) !important;
+    color: #3fb950 !important;
+}
+
+.suggestion-accept {
+    color: #3fb950;
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+.suggestion-accept:hover {
+    text-decoration: underline;
+}
+
+.error-glyph {
+    background-color: #f85149;
+    width: 3px !important;
+}
+
+.suggestion-glyph {
+    background-color: #3fb950;
+    width: 3px !important;
 }

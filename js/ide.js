@@ -993,15 +993,22 @@ ${code}
 Error:
 ${errorMessage}
 
-
 Please provide a response in this format:
-<h1>Suggestion</h1>
-1. Error Location: Specify the exact line number and what's wrong
-2. Incorrect Line: Show the problematic line
-3. Corrected Line: Show how the line should be written
-4. Explanation: Briefly explain why this fix works
+### Suggestion
+1. **Error Location**: Line X - brief description
+2. **Incorrect Line**: 
+\`\`\`cpp
+<just the code, no line numbers>
+\`\`\`
 
-Format your response in markdown.`;
+3. **Corrected Line**: 
+\`\`\`cpp
+<just the code, no line numbers>
+\`\`\`
+
+4. **Explanation**: Brief explanation of the fix
+
+Format your response exactly as shown above.`;
         
         const response = await sendChatMessage(prompt);
         return response;
@@ -1065,85 +1072,91 @@ function handleCompileError(response) {
 }
 
 function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) {
-    console.log('Creating widget with:', { incorrectLine, correctedLine, lineNumber });
+    // Get the editor model
+    const model = sourceEditor.getModel();
     
-    const domNode = document.createElement('div');
-    domNode.className = 'suggestion-widget monaco-editor';
-    domNode.style.zIndex = '50';
-    domNode.innerHTML = `
-        <div class="suggestion-content">
-            <div class="suggestion-header">Suggested Fix:</div>
-            <div class="suggestion-diff">
-                <div class="line-old"><span class="delete-marker">-</span>${incorrectLine}</div>
-                <div class="line-new"><span class="add-marker">+</span>${correctedLine}</div>
-            </div>
-            <div class="suggestion-actions">
-                <button class="accept-btn">Accept</button>
-                <button class="reject-btn">Reject</button>
-            </div>
-        </div>
-    `;
+    // Create decorations for both lines
+    const decorations = [
+        // Error line decoration (red background)
+        {
+            range: new monaco.Range(lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber)),
+            options: {
+                isWholeLine: true,
+                className: 'error-line',
+                glyphMarginClassName: 'error-glyph'
+            }
+        }
+    ];
 
-    // Create the widget object first
-    const widget = {
-        domNode: domNode,
-        getId: () => 'suggestion-widget',
-        getDomNode: () => domNode,
-        getPosition: () => ({
-            position: {
-                lineNumber: lineNumber,
-                column: 1
-            },
-            preference: [monaco.editor.ContentWidgetPositionPreference.BELOW]
-        })
-    };
+    // Insert the suggestion line after the error line
+    const indentation = model.getLineContent(lineNumber).match(/^\s*/)[0];
+    const suggestionText = '\n' + indentation + correctedLine;
+    
+    // Insert the suggestion line
+    const insertPosition = model.getPositionAt(model.getOffsetAt({
+        lineNumber: lineNumber,
+        column: model.getLineMaxColumn(lineNumber)
+    }));
+    
+    sourceEditor.executeEdits('suggestion', [{
+        range: new monaco.Range(
+            insertPosition.lineNumber,
+            insertPosition.column,
+            insertPosition.lineNumber,
+            insertPosition.column
+        ),
+        text: suggestionText
+    }]);
 
-    // Add event listeners for accept/reject buttons
-    domNode.querySelector('.accept-btn').addEventListener('click', () => {
-        console.log('Accept button clicked');
-        
-        // Get the actual content of the current line
-        const model = sourceEditor.getModel();
-        const lineContent = model.getLineContent(lineNumber);
-        console.log('Current line content:', lineContent);
-        
-        // Calculate indentation from the current line
-        const indentMatch = lineContent.match(/^\s+/);
-        const indentation = indentMatch ? indentMatch[0] : '';
-        console.log('Line indentation:', indentation);
-        
-        // Create a range for the entire line
-        const range = new monaco.Range(
-            lineNumber,
-            1,  // Start of line
-            lineNumber,
-            model.getLineLength(lineNumber) + 1  // End of line + 1
-        );
-        console.log('Replacing range:', range);
-        
-        // Apply the fix with preserved indentation
-        const indentedCorrection = indentation + correctedLine.trim();
-        sourceEditor.executeEdits('suggestion', [{
-            range: range,
-            text: indentedCorrection,
-            forceMoveMarkers: true
-        }]);
-        console.log('Applied fix to editor with text:', indentedCorrection);
-        
-        // Remove the widget and decoration
-        sourceEditor.removeContentWidget(widget);
-        sourceEditor.deltaDecorations([], []);
+    // Add decoration for suggestion line
+    decorations.push({
+        range: new monaco.Range(lineNumber + 1, 1, lineNumber + 1, model.getLineMaxColumn(lineNumber + 1)),
+        options: {
+            isWholeLine: true,
+            className: 'suggestion-line',
+            glyphMarginClassName: 'suggestion-glyph',
+            after: {
+                content: '    [Accept]',
+                inlineClassName: 'suggestion-accept'
+            }
+        }
     });
 
-    domNode.querySelector('.reject-btn').addEventListener('click', () => {
-        console.log('Reject button clicked');
-        // Just remove the widget and decoration
-        sourceEditor.removeContentWidget(widget);
-        sourceEditor.deltaDecorations([], []);
-    });
+    // Apply the decorations
+    const decorationIds = sourceEditor.deltaDecorations([], decorations);
+    
+    // Add click handler for the accept button
+    const disposable = sourceEditor.onMouseDown((e) => {
+        if (e.target.element?.classList.contains('suggestion-accept')) {
+            // Replace the error line with the corrected line
+            sourceEditor.executeEdits('suggestion', [{
+                range: new monaco.Range(
+                    lineNumber,
+                    1,
+                    lineNumber,
+                    model.getLineMaxColumn(lineNumber)
+                ),
+                text: indentation + correctedLine
+            }]);
+            
+            // Remove the suggestion line
+            sourceEditor.executeEdits('suggestion', [{
+                range: new monaco.Range(
+                    lineNumber + 1,
+                    1,
+                    lineNumber + 2,
+                    1
+                ),
+                text: ''
+            }]);
 
-    console.log('Created widget object:', widget);
-    return widget;
+            // Remove decorations
+            sourceEditor.deltaDecorations(decorationIds, []);
+            
+            // Remove the click handler
+            disposable.dispose();
+        }
+    });
 }
 
 function parseSuggestion(suggestion) {
@@ -1159,7 +1172,8 @@ function parseSuggestion(suggestion) {
 
             // Extract line number
             if (line.includes('Error Location')) {
-                const match = line.match(/line (\d+)/);
+                // Look for "Line X" or "line X" pattern
+                const match = line.match(/[Ll]ine\s+(\d+)/);
                 if (match) {
                     lineNumber = parseInt(match[1]);
                     console.log('Found line number:', lineNumber);
@@ -1169,16 +1183,20 @@ function parseSuggestion(suggestion) {
             // Extract incorrect line
             if (line.includes('```cpp') && !foundIncorrectLine) {
                 if (i + 1 < lines.length) {
-                    incorrectLine = lines[i + 1].trim();
+                    // Remove line number prefix if present (e.g., "7 | ")
+                    const codeLine = lines[i + 1].trim();
+                    incorrectLine = codeLine.replace(/^\d+\s*\|\s*/, '').trim();
                     console.log('Found incorrect line:', incorrectLine);
                     foundIncorrectLine = true;
                 }
             }
             
-            // Extract corrected line (look for second code block)
+            // Extract corrected line
             else if (line.includes('```cpp') && foundIncorrectLine) {
                 if (i + 1 < lines.length) {
-                    correctedLine = lines[i + 1].trim();
+                    // Remove line number prefix if present
+                    const codeLine = lines[i + 1].trim();
+                    correctedLine = codeLine.replace(/^\d+\s*\|\s*/, '').trim();
                     console.log('Found corrected line:', correctedLine);
                 }
             }
