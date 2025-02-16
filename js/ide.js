@@ -847,6 +847,21 @@ document.addEventListener("DOMContentLoaded", async function () {
         $('#judge0-api-key-btn.ui.dropdown').dropdown('set selected', currentModel);
         console.log('Dropdown initialized with:', currentModel);
     });
+
+    // Add this where the modal is initialized
+    $('#judge0-api-key-modal').modal({
+        onApprove: function() {
+            const key = $('#judge0-api-key-input').val().trim();
+            console.log('Saving API key:', key ? 'Key provided' : 'No key provided');
+            if (key) {
+                setStoredApiKey(key);
+                console.log('API key saved to localStorage');
+                return true;
+            }
+            console.log('No API key provided');
+            return false;
+        }
+    });
 });
 
 const DEFAULT_COMPILER_OPTIONS = "";
@@ -916,6 +931,8 @@ function getLanguageForExtension(extension) {
 
 async function sendChatMessage(message, selectedCode = null) {
     const apiKey = getStoredApiKey();
+    console.log('Retrieved API key from storage:', apiKey ? 'Key exists' : 'No key found');
+    
     if (!apiKey) {
         $('#judge0-api-key-modal').modal('show');
         throw new Error("Please set your OpenRouter API key");
@@ -949,6 +966,12 @@ async function sendChatMessage(message, selectedCode = null) {
                 }]
             })
         });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Chat API Error:', errorData);
+            throw new Error(errorData);
+        }
 
         const data = await response.json();
         console.log('Response received from model:', selectedModel);

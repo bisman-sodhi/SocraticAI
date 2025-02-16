@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Judge0 IDE with AI Chat",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
