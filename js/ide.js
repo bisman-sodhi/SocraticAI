@@ -617,7 +617,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             layout.registerComponent("chat", function (container, state) {
                 const chatElement = $(`
                     <div class="chat-container">
-                        <div class="chat-messages"></div>
+                        <div id="chat-messages" class="chat-messages"></div>
                         <div class="chat-input-area">
                             <input type="text" placeholder="Ask a question..." class="chat-input">
                             <button class="ui primary button chat-send">Send</button>
