@@ -1030,8 +1030,8 @@ function handleCompileError(response) {
     $statusLine.html("Compilation Error");
     $runBtn.removeClass("disabled");
     
-    // Clear previous messages and show "Suggesting fix..." message
-    $('#chat-messages').empty().append(`
+    // Append "Suggesting fix..." message
+    $('#chat-messages').append(`
         <div class="message assistant">
             <div class="content">
                 <p><em>Suggesting fix...</em></p>
@@ -1040,22 +1040,11 @@ function handleCompileError(response) {
     `);
     
     // Get AI suggestion for the error
-    console.log('Getting AI suggestion for error');
     getAISuggestion(sourceEditor.getValue(), stderr)
         .then(suggestion => {
-            console.log('Received AI suggestion:', suggestion);
-            
-            // Parse the suggestion to get the line number and fix
-            const suggestionData = parseSuggestion(suggestion);
-            console.log('Parsed suggestion data:', suggestionData);
-            
-            if (!suggestionData) {
-                console.log('No valid suggestion data found');
-                return;
-            }
-
-            // Replace loading message with the explanation
-            $('#chat-messages').empty().append(`
+            // Remove the "Suggesting fix..." message and append the explanation
+            $('.message.assistant:last').remove();
+            $('#chat-messages').append(`
                 <div class="message assistant">
                     <div class="content">
                         ${parseMarkdown(suggestion)}
@@ -1063,16 +1052,15 @@ function handleCompileError(response) {
                 </div>
             `);
 
-            const { lineNumber, incorrectLine, correctedLine } = suggestionData;
+            const { lineNumber, incorrectLine, correctedLine } = parseSuggestion(suggestion);
             console.log('Creating suggestion for line', lineNumber);
             
             // Create inline suggestion
             createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber);
         })
         .catch(error => {
-            console.error('Error handling suggestion:', error);
-            // Update the loading message with error
-            $('#chat-messages').empty().append(`
+            $('.message.assistant:last').remove();
+            $('#chat-messages').append(`
                 <div class="message assistant">
                     <div class="content">
                         <p>Sorry, I encountered an error while suggesting a fix.</p>
