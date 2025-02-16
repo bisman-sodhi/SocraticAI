@@ -84,6 +84,10 @@
     color: #8b949e;
     margin-left: 0;
     font-style: italic;
+    background: #2d2d2d;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 10px;
 }
 
 .message.assistant {
