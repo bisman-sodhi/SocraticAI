@@ -1107,6 +1107,11 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
         const lineContent = model.getLineContent(lineNumber);
         console.log('Current line content:', lineContent);
         
+        // Calculate indentation from the current line
+        const indentMatch = lineContent.match(/^\s+/);
+        const indentation = indentMatch ? indentMatch[0] : '';
+        console.log('Line indentation:', indentation);
+        
         // Create a range for the entire line
         const range = new monaco.Range(
             lineNumber,
@@ -1116,13 +1121,14 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
         );
         console.log('Replacing range:', range);
         
-        // Apply the fix
+        // Apply the fix with preserved indentation
+        const indentedCorrection = indentation + correctedLine.trim();
         sourceEditor.executeEdits('suggestion', [{
             range: range,
-            text: correctedLine,
+            text: indentedCorrection,
             forceMoveMarkers: true
         }]);
-        console.log('Applied fix to editor with text:', correctedLine);
+        console.log('Applied fix to editor with text:', indentedCorrection);
         
         // Remove the widget and decoration
         sourceEditor.removeContentWidget(widget);
