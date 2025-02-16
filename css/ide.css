@@ -477,3 +477,21 @@
     background: #00ff00 !important;
     width: 5px !important;
 }
+
+.floating-chat-btn {
+    position: absolute;
+    display: none;  /* Hidden by default */
+    background: #4183c4;  /* Match the existing button color */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.floating-chat-btn:hover {
+    background: #286090;  /* Match existing hover color */
+}

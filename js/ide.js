@@ -586,6 +586,62 @@ document.addEventListener("DOMContentLoaded", async function () {
                 });
 
                 sourceEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run);
+
+                // Add floating chat button
+                const floatingChatBtn = $('<button class="floating-chat-btn">Ask AI</button>');
+                container.getElement().append(floatingChatBtn);
+
+                // Handle text selection
+                sourceEditor.onDidChangeCursorSelection(e => {
+                    const selection = sourceEditor.getSelection();
+                    const selectedText = sourceEditor.getModel().getValueInRange(selection);
+
+                    if (selectedText.trim()) {
+                        // Get selection coordinates
+                        const selectionPos = sourceEditor.getScrolledVisiblePosition(selection.getEndPosition());
+                        
+                        if (selectionPos) {
+                            // Position button near selection but avoid covering code
+                            const editorPos = container.getElement().offset();
+                            const btnWidth = floatingChatBtn.outerWidth();
+                            const btnHeight = floatingChatBtn.outerHeight();
+                            
+                            // Try to position to the right of selection
+                            let left = selectionPos.left + 10;
+                            let top = selectionPos.top;
+
+                            // If button would go off screen, position it differently
+                            const editorWidth = container.getElement().width();
+                            if (left + btnWidth > editorWidth) {
+                                left = selectionPos.left - btnWidth - 10;
+                            }
+
+                            floatingChatBtn.css({
+                                display: 'block',
+                                left: left + 'px',
+                                top: top + 'px'
+                            });
+                        }
+                    } else {
+                        floatingChatBtn.hide();
+                    }
+                });
+
+                // Handle button click
+                floatingChatBtn.on('click', async () => {
+                    const selection = sourceEditor.getSelection();
+                    const selectedText = sourceEditor.getModel().getValueInRange(selection);
+                    
+                    if (selectedText.trim()) {
+                        // Focus chat input and add context indicator
+                        const chatInput = $('.chat-input');
+                        chatInput.attr('placeholder', 'Ask about selected code...');
+                        chatInput.focus();
+                        
+                        // Store selected text to use when sending message
+                        chatInput.data('selectedCode', selectedText);
+                    }
+                });
             });
 
             layout.registerComponent("stdin", function (container, state) {
@@ -701,10 +757,60 @@ document.addEventListener("DOMContentLoaded", async function () {
 
                 // Event handlers
                 sendButton.click(handleSend);
-                chatInput.on('keypress', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
+                chatInput.on('keypress', async function(e) {
+                    if (e.which === 13) {  // Enter key
+                        const message = $(this).val().trim();
+                        if (message) {
+                            // Get selected code if any
+                            const selectedCode = $(this).data('selectedCode');
+                            
+                            // Add user message to chat
+                            $('#chat-messages').append(`
+                                <div class="message user">
+                                    <div class="content">
+                                        <p>${message}</p>
+                                        ${selectedCode ? `<pre><code>${selectedCode}</code></pre>` : ''}
+                                    </div>
+                                </div>
+                            `);
+
+                            // Clear input and selection context
+                            $(this).val('');
+                            $(this).removeData('selectedCode');
+                            $(this).attr('placeholder', 'Ask a question...');
+
+                            // Add loading indicator after user message
+                            const loadingMessage = $(`
+                                <div class="loading-message">
+                                    Generating<span class="loading-dots"></span>
+                                </div>
+                            `);
+                            $('#chat-messages').append(loadingMessage);
+                            
+                            // Scroll to show loading
+                            const chatMessages = $('#chat-messages');
+                            chatMessages.scrollTop(chatMessages[0].scrollHeight);
+
+                            // Send message with selected code context
+                            const response = await sendChatMessage(message, selectedCode);
+                            
+                            // Remove loading message
+                            loadingMessage.remove();
+                            
+                            // Add AI response to chat
+                            const responseElement = $(`
+                                <div class="message assistant">
+                                    <div class="content">
+                                        ${parseMarkdown(response)}
+                                    </div>
+                                </div>
+                            `);
+                            $('#chat-messages').append(responseElement);
+                            
+                            // Scroll to show the top of the response
+                            const responseTop = responseElement.position().top;
+                            chatMessages.scrollTop(responseTop - 20); // 20px padding from top
+                        }
                     }
                 });
                 
