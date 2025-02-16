@@ -1012,7 +1012,9 @@ Format your response in markdown.`;
 }
 
 function handleCompileError(response) {
-    let stderr = decode(response.compile_output || "");  // Make sure to decode the compile output
+    console.log('Handling compile error:', response);
+    let stderr = decode(response.compile_output || "");
+    console.log('Decoded error:', stderr);
     
     // Update the output
     stdoutEditor.setValue(`Compilation Error:\n${stderr}`);
@@ -1021,43 +1023,172 @@ function handleCompileError(response) {
     $statusLine.html("Compilation Error");
     $runBtn.removeClass("disabled");
     
-    // Get the chat component early to show loading state
-    const chatComponent = layout.root.getItemsById('chat')[0];
-    if (chatComponent) {
-        const chatMessages = chatComponent.container.getElement().find('.chat-messages');
-        
-        // Add loading message
-        const loadingDiv = $(`
-            <div class="loading-message">
-                Suggesting fix<span class="loading-dots"></span>
-            </div>
-        `);
-        chatMessages.append(loadingDiv);
-        chatMessages.scrollTop(chatMessages[0].scrollHeight);
-        
-        // Make chat tab active immediately
-        chatComponent.parent.header.parent.setActiveContentItem(chatComponent);
-        
-        // Get AI suggestion for the error
-        getAISuggestion(sourceEditor.getValue(), stderr)
-            .then(suggestion => {
-                // Remove loading message
-                loadingDiv.remove();
-                
-                // Create and append the error message
-                const errorDiv = $(`
-                    <div class="message assistant">
-                        ${parseMarkdown(suggestion)}
-                    </div>
-                `);
-                chatMessages.append(errorDiv);
-                chatMessages.scrollTop(chatMessages[0].scrollHeight);
+    // Get AI suggestion for the error
+    console.log('Getting AI suggestion for error');
+    getAISuggestion(sourceEditor.getValue(), stderr)
+        .then(suggestion => {
+            console.log('Received AI suggestion:', suggestion);
+            
+            // Parse the suggestion to get the line number and fix
+            const suggestionData = parseSuggestion(suggestion);
+            console.log('Parsed suggestion data:', suggestionData);
+            
+            if (!suggestionData) {
+                console.log('No valid suggestion data found');
+                return;
+            }
 
-                // Initialize syntax highlighting for code blocks
-                errorDiv.find('pre code').each(function(i, block) {
-                    hljs.highlightElement(block);
-                });
-            });
+            const { lineNumber, incorrectLine, correctedLine } = suggestionData;
+            console.log('Creating widget for line', lineNumber);
+            
+            // Create widget for inline suggestion
+            const widget = createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber);
+            
+            // Add the widget to the editor at the error line
+            sourceEditor.addContentWidget(widget);
+            console.log('Added suggestion widget to editor');
+            
+            // Highlight the error line
+            const decorations = sourceEditor.deltaDecorations([], [{
+                range: new monaco.Range(lineNumber, 1, lineNumber, 1),
+                options: {
+                    isWholeLine: true,
+                    className: 'errorLineDecoration',
+                    glyphMarginClassName: 'errorGlyphMargin'
+                }
+            }]);
+            console.log('Added error line decoration:', decorations);
+        })
+        .catch(error => {
+            console.error('Error handling suggestion:', error);
+        });
+}
+
+function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) {
+    console.log('Creating widget with:', { incorrectLine, correctedLine, lineNumber });
+    
+    const domNode = document.createElement('div');
+    domNode.className = 'suggestion-widget monaco-editor';
+    domNode.style.zIndex = '50';
+    domNode.innerHTML = `
+        <div class="suggestion-content">
+            <div class="suggestion-header">Suggested Fix:</div>
+            <div class="suggestion-diff">
+                <div class="line-old"><span class="delete-marker">-</span>${incorrectLine}</div>
+                <div class="line-new"><span class="add-marker">+</span>${correctedLine}</div>
+            </div>
+            <div class="suggestion-actions">
+                <button class="accept-btn">Accept</button>
+                <button class="reject-btn">Reject</button>
+            </div>
+        </div>
+    `;
+
+    // Create the widget object first
+    const widget = {
+        domNode: domNode,
+        getId: () => 'suggestion-widget',
+        getDomNode: () => domNode,
+        getPosition: () => ({
+            position: {
+                lineNumber: lineNumber,
+                column: 1
+            },
+            preference: [monaco.editor.ContentWidgetPositionPreference.BELOW]
+        })
+    };
+
+    // Add event listeners for accept/reject buttons
+    domNode.querySelector('.accept-btn').addEventListener('click', () => {
+        console.log('Accept button clicked');
+        
+        // Get the actual content of the current line
+        const model = sourceEditor.getModel();
+        const lineContent = model.getLineContent(lineNumber);
+        console.log('Current line content:', lineContent);
+        
+        // Create a range for the entire line
+        const range = new monaco.Range(
+            lineNumber,
+            1,  // Start of line
+            lineNumber,
+            model.getLineLength(lineNumber) + 1  // End of line + 1
+        );
+        console.log('Replacing range:', range);
+        
+        // Apply the fix
+        sourceEditor.executeEdits('suggestion', [{
+            range: range,
+            text: correctedLine,
+            forceMoveMarkers: true
+        }]);
+        console.log('Applied fix to editor with text:', correctedLine);
+        
+        // Remove the widget and decoration
+        sourceEditor.removeContentWidget(widget);
+        sourceEditor.deltaDecorations([], []);
+    });
+
+    domNode.querySelector('.reject-btn').addEventListener('click', () => {
+        console.log('Reject button clicked');
+        // Just remove the widget and decoration
+        sourceEditor.removeContentWidget(widget);
+        sourceEditor.deltaDecorations([], []);
+    });
+
+    console.log('Created widget object:', widget);
+    return widget;
+}
+
+function parseSuggestion(suggestion) {
+    console.log('Parsing suggestion:', suggestion);
+    try {
+        const lines = suggestion.split('\n');
+        let lineNumber, incorrectLine, correctedLine;
+        let foundIncorrectLine = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            console.log('Processing line:', line);
+
+            // Extract line number
+            if (line.includes('Error Location')) {
+                const match = line.match(/line (\d+)/);
+                if (match) {
+                    lineNumber = parseInt(match[1]);
+                    console.log('Found line number:', lineNumber);
+                }
+            }
+            
+            // Extract incorrect line
+            if (line.includes('```cpp') && !foundIncorrectLine) {
+                if (i + 1 < lines.length) {
+                    incorrectLine = lines[i + 1].trim();
+                    console.log('Found incorrect line:', incorrectLine);
+                    foundIncorrectLine = true;
+                }
+            }
+            
+            // Extract corrected line (look for second code block)
+            else if (line.includes('```cpp') && foundIncorrectLine) {
+                if (i + 1 < lines.length) {
+                    correctedLine = lines[i + 1].trim();
+                    console.log('Found corrected line:', correctedLine);
+                }
+            }
+        }
+
+        if (lineNumber && incorrectLine && correctedLine) {
+            const result = { lineNumber, incorrectLine, correctedLine };
+            console.log('Parsed suggestion data:', result);
+            return result;
+        }
+        
+        console.log('Missing required data:', { lineNumber, incorrectLine, correctedLine });
+        return null;
+    } catch (error) {
+        console.error('Error parsing suggestion:', error);
+        return null;
     }
 }
 

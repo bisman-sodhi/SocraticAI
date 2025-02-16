@@ -280,3 +280,84 @@
 #judge0-api-key-btn .menu .item:hover {
     background: rgba(0,0,0,0.05);
 }
+
+.suggestion-widget {
+    background: #1e1e1e;
+    border: 1px solid #454545;
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+    color: #d4d4d4;
+    font-family: 'JetBrains Mono', monospace;
+    margin: 8px 0;
+    max-width: 600px;
+    position: relative;
+    z-index: 50;
+}
+
+.suggestion-content {
+    padding: 8px;
+}
+
+.suggestion-header {
+    color: #cccccc;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.suggestion-diff {
+    background: #1e1e1e;
+    border-radius: 3px;
+    font-size: 12px;
+    margin-bottom: 8px;
+    padding: 4px;
+}
+
+.line-old {
+    color: #f14c4c;
+    margin-bottom: 4px;
+}
+
+.line-new {
+    color: #49cc49;
+}
+
+.delete-marker, .add-marker {
+    display: inline-block;
+    margin-right: 8px;
+    opacity: 0.6;
+}
+
+.suggestion-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.suggestion-actions button {
+    background: #2d2d2d;
+    border: 1px solid #454545;
+    border-radius: 3px;
+    color: #cccccc;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 12px;
+    transition: all 0.2s;
+}
+
+.accept-btn:hover {
+    background: #388e3c;
+    border-color: #4caf50;
+}
+
+.reject-btn:hover {
+    background: #d32f2f;
+    border-color: #f44336;
+}
+
+.errorLineDecoration {
+    background: rgba(255,0,0,0.1);
+}
+
+.errorGlyphMargin {
+    background: #f44336;
+    width: 4px !important;
+}
