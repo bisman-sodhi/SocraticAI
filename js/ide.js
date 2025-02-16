@@ -1030,6 +1030,15 @@ function handleCompileError(response) {
     $statusLine.html("Compilation Error");
     $runBtn.removeClass("disabled");
     
+    // Clear previous messages and show "Suggesting fix..." message
+    $('#chat-messages').empty().append(`
+        <div class="message assistant">
+            <div class="content">
+                <p><em>Suggesting fix...</em></p>
+            </div>
+        </div>
+    `);
+    
     // Get AI suggestion for the error
     console.log('Getting AI suggestion for error');
     getAISuggestion(sourceEditor.getValue(), stderr)
@@ -1045,29 +1054,31 @@ function handleCompileError(response) {
                 return;
             }
 
+            // Replace loading message with the explanation
+            $('#chat-messages').empty().append(`
+                <div class="message assistant">
+                    <div class="content">
+                        ${parseMarkdown(suggestion)}
+                    </div>
+                </div>
+            `);
+
             const { lineNumber, incorrectLine, correctedLine } = suggestionData;
-            console.log('Creating widget for line', lineNumber);
+            console.log('Creating suggestion for line', lineNumber);
             
-            // Create widget for inline suggestion
-            const widget = createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber);
-            
-            // Add the widget to the editor at the error line
-            sourceEditor.addContentWidget(widget);
-            console.log('Added suggestion widget to editor');
-            
-            // Highlight the error line
-            const decorations = sourceEditor.deltaDecorations([], [{
-                range: new monaco.Range(lineNumber, 1, lineNumber, 1),
-                options: {
-                    isWholeLine: true,
-                    className: 'errorLineDecoration',
-                    glyphMarginClassName: 'errorGlyphMargin'
-                }
-            }]);
-            console.log('Added error line decoration:', decorations);
+            // Create inline suggestion
+            createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber);
         })
         .catch(error => {
             console.error('Error handling suggestion:', error);
+            // Update the loading message with error
+            $('#chat-messages').empty().append(`
+                <div class="message assistant">
+                    <div class="content">
+                        <p>Sorry, I encountered an error while suggesting a fix.</p>
+                    </div>
+                </div>
+            `);
         });
 }
 
@@ -1075,56 +1086,58 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
     // Get the editor model
     const model = sourceEditor.getModel();
     
-    // Create decorations for both lines
-    const decorations = [
-        // Error line decoration (red background)
-        {
-            range: new monaco.Range(lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber)),
-            options: {
-                isWholeLine: true,
-                className: 'error-line',
-                glyphMarginClassName: 'error-glyph'
+    // Create decorations for the error line
+    const errorDecoration = {
+        range: new monaco.Range(lineNumber, 1, lineNumber, model.getLineMaxColumn(lineNumber)),
+        options: {
+            isWholeLine: true,
+            linesDecorationsClassName: 'line-decoration-error',
+            inlineClassName: null,
+            marginClassName: 'margin-decoration-error',
+            minimap: {
+                color: '#ff0000',
+                position: 2
             }
         }
-    ];
+    };
 
     // Insert the suggestion line after the error line
     const indentation = model.getLineContent(lineNumber).match(/^\s*/)[0];
     const suggestionText = '\n' + indentation + correctedLine;
     
     // Insert the suggestion line
-    const insertPosition = model.getPositionAt(model.getOffsetAt({
-        lineNumber: lineNumber,
-        column: model.getLineMaxColumn(lineNumber)
-    }));
-    
     sourceEditor.executeEdits('suggestion', [{
         range: new monaco.Range(
-            insertPosition.lineNumber,
-            insertPosition.column,
-            insertPosition.lineNumber,
-            insertPosition.column
+            lineNumber,
+            model.getLineMaxColumn(lineNumber),
+            lineNumber,
+            model.getLineMaxColumn(lineNumber)
         ),
         text: suggestionText
     }]);
 
-    // Add decoration for suggestion line
-    decorations.push({
+    // Create decoration for the suggestion line
+    const suggestionDecoration = {
         range: new monaco.Range(lineNumber + 1, 1, lineNumber + 1, model.getLineMaxColumn(lineNumber + 1)),
         options: {
             isWholeLine: true,
-            className: 'suggestion-line',
-            glyphMarginClassName: 'suggestion-glyph',
+            linesDecorationsClassName: 'line-decoration-suggestion',
+            inlineClassName: null,
+            marginClassName: 'margin-decoration-suggestion',
+            minimap: {
+                color: '#00ff00',
+                position: 2
+            },
             after: {
                 content: '    [Accept]',
                 inlineClassName: 'suggestion-accept'
             }
         }
-    });
+    };
 
-    // Apply the decorations
-    const decorationIds = sourceEditor.deltaDecorations([], decorations);
-    
+    // Apply both decorations
+    const decorationIds = sourceEditor.deltaDecorations([], [errorDecoration, suggestionDecoration]);
+
     // Add click handler for the accept button
     const disposable = sourceEditor.onMouseDown((e) => {
         if (e.target.element?.classList.contains('suggestion-accept')) {

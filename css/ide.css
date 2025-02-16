@@ -30,9 +30,17 @@
 }
 
 .chat-messages {
-    flex: 1;
-    overflow-y: auto;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    max-height: 400px;
     padding: 10px;
+    overflow-y: auto;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    z-index: 1000;
 }
 
 .chat-input-area {
@@ -81,9 +89,19 @@
 }
 
 .message.assistant {
-    color: white;    /* White text for AI responses */
-    margin-right: 0;
-    background: none;  /* Remove background */
+    color: white;
+    margin-bottom: 10px;
+}
+
+.message.assistant .content {
+    background: #2d2d2d;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.message.assistant em {
+    color: #888;
+    font-style: italic;
 }
 
 /* Loading indicator styles */
@@ -398,17 +416,41 @@
 }
 
 .error-line {
-    background-color: rgba(248, 81, 73, 0.15) !important;
-    color: #f85149 !important;
+    background-color: #ff000020 !important;
 }
 
 .suggestion-line {
-    background-color: rgba(63, 185, 80, 0.15) !important;
-    color: #3fb950 !important;
+    background-color: #00ff0020 !important;
+}
+
+.error-glyph::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background-color: #ff0000;
+}
+
+.suggestion-glyph::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background-color: #00ff00;
+}
+
+.error-text {
+    color: #ff4444 !important;
+}
+
+.suggestion-text {
+    color: #4caf50 !important;
 }
 
 .suggestion-accept {
-    color: #3fb950;
+    color: #4caf50;
     cursor: pointer;
     margin-left: 8px;
 }
@@ -417,12 +459,22 @@
     text-decoration: underline;
 }
 
-.error-glyph {
-    background-color: #f85149;
-    width: 3px !important;
+.line-decoration-error {
+    background: linear-gradient(to right, #ff000050 0%, #ff000050 5px, transparent 5px) !important;
+    margin-left: 5px !important;
 }
 
-.suggestion-glyph {
-    background-color: #3fb950;
-    width: 3px !important;
+.line-decoration-suggestion {
+    background: linear-gradient(to right, #00ff0050 0%, #00ff0050 5px, transparent 5px) !important;
+    margin-left: 5px !important;
+}
+
+.margin-decoration-error {
+    background: #ff0000 !important;
+    width: 5px !important;
+}
+
+.margin-decoration-suggestion {
+    background: #00ff00 !important;
+    width: 5px !important;
 }
