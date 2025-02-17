@@ -806,10 +806,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                                 </div>
                             `);
                             $('#chat-messages').append(responseElement);
-                            
-                            // Scroll to show the top of the response
-                            const responseTop = responseElement.position().top;
-                            chatMessages.scrollTop(responseTop - 20); // 20px padding from top
+                            scrollToNewMessage(responseElement);
                         }
                     }
                 });
@@ -1124,6 +1121,13 @@ Format your response exactly as shown above.`;
     }
 }
 
+// Helper function to scroll to the top of a new message
+function scrollToNewMessage(messageElement) {
+    const chatMessages = $('#chat-messages');
+    const messageTop = messageElement.position().top;
+    chatMessages.scrollTop(messageTop); // 20px padding from top
+}
+
 function handleCompileError(response) {
     console.log('Handling compile error:', response);
     let stderr = decode(response.compile_output || "");
@@ -1137,26 +1141,31 @@ function handleCompileError(response) {
     $runBtn.removeClass("disabled");
     
     // Append "Suggesting fix..." message
-    $('#chat-messages').append(`
+    const loadingMessage = $(`
         <div class="message assistant">
             <div class="content">
                 <p><em>Suggesting fix...</em></p>
             </div>
         </div>
     `);
+    $('#chat-messages').append(loadingMessage);
+    scrollToNewMessage(loadingMessage);
     
     // Get AI suggestion for the error
     getAISuggestion(sourceEditor.getValue(), stderr)
         .then(suggestion => {
-            // Remove the "Suggesting fix..." message and append the explanation
-            $('.message.assistant:last').remove();
-            $('#chat-messages').append(`
+            // Remove loading message
+            loadingMessage.remove();
+            
+            const responseElement = $(`
                 <div class="message assistant">
                     <div class="content">
                         ${parseMarkdown(suggestion)}
                     </div>
                 </div>
             `);
+            $('#chat-messages').append(responseElement);
+            scrollToNewMessage(responseElement);
 
             const { lineNumber, incorrectLine, correctedLine } = parseSuggestion(suggestion);
             console.log('Creating suggestion for line', lineNumber);
@@ -1165,14 +1174,18 @@ function handleCompileError(response) {
             createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber);
         })
         .catch(error => {
-            $('.message.assistant:last').remove();
-            $('#chat-messages').append(`
+            // Remove loading message
+            loadingMessage.remove();
+            
+            const errorElement = $(`
                 <div class="message assistant">
                     <div class="content">
                         <p>Sorry, I encountered an error while suggesting a fix.</p>
                     </div>
                 </div>
             `);
+            $('#chat-messages').append(errorElement);
+            scrollToNewMessage(errorElement);
         });
 }
 
@@ -1223,8 +1236,9 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
                 position: 2
             },
             after: {
-                content: '    [Accept]',
-                inlineClassName: 'suggestion-accept'
+                content: '[Accept] [Reject]',
+                inlineClassName: 'suggestion-buttons',
+                margin: '0 0 0 1em'
             }
         }
     };
@@ -1232,10 +1246,27 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
     // Apply both decorations
     const decorationIds = sourceEditor.deltaDecorations([], [errorDecoration, suggestionDecoration]);
 
-    // Add click handler for the accept button
-    const disposable = sourceEditor.onMouseDown((e) => {
-        if (e.target.element?.classList.contains('suggestion-accept')) {
-            // Replace the error line with the corrected line
+    // Handle button clicks
+    sourceEditor.onMouseDown((e) => {
+        const element = e.target.element;
+        console.log('Click detected on element:', element);
+        if (!element?.classList.contains('suggestion-buttons')) return;
+        
+        const text = element.textContent;
+        console.log('Button text:', text);
+        
+        // Get click position using the original event
+        const rect = element.getBoundingClientRect();
+        const relativeX = e.event.browserEvent.clientX - rect.left;
+        console.log('Click position:', relativeX);
+        
+        // The first half of the element is Accept, second half is Reject
+        const isAcceptClick = relativeX < rect.width / 2;
+        console.log('Is Accept click:', isAcceptClick);
+
+        if (isAcceptClick) {
+            console.log('Accept button clicked');
+            // Accept code - replace error line with corrected line
             sourceEditor.executeEdits('suggestion', [{
                 range: new monaco.Range(
                     lineNumber,
@@ -1257,11 +1288,28 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
                 text: ''
             }]);
 
-            // Remove decorations
+            // Remove all decorations since we accepted the fix
             sourceEditor.deltaDecorations(decorationIds, []);
+        } else {
+            console.log('Reject button clicked');
+            console.log('Current line number:', lineNumber);
+            console.log('Current decorations:', decorationIds);
+
+            // Only remove the suggestion line
+            sourceEditor.executeEdits('suggestion', [{
+                range: new monaco.Range(
+                    lineNumber + 1,
+                    1,
+                    lineNumber + 2,
+                    1
+                ),
+                text: ''
+            }]);
+            console.log('Suggestion line removed');
             
-            // Remove the click handler
-            disposable.dispose();
+            // Remove all decorations since we rejected the fix
+            sourceEditor.deltaDecorations(decorationIds, []);
+            console.log('Decorations updated');
         }
     });
 }

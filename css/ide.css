@@ -448,14 +448,11 @@
     color: #4caf50 !important;
 }
 
-.suggestion-accept {
-    color: #4caf50;
-    cursor: pointer;
+.suggestion-buttons {
     margin-left: 8px;
-}
-
-.suggestion-accept:hover {
-    text-decoration: underline;
+    cursor: pointer;
+    color: #fff;
+    background: #1e1e1e;
 }
 
 .line-decoration-error {
