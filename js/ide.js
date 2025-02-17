@@ -1474,7 +1474,8 @@ async function handleCommentToCode(lineNumber, commentLine) {
 Comment: ${commentLine}
 
 The code should implement what the comment describes using proper formatting.
-Look at the entire code, if it includes imports, functions, etc., use them. Do not repeat code and do not use the same function name.
+Look at the entire code, reuse existing functions, imports, and definitions instead of redefining them.
+Do not modify or repeat the main entry point (main, def main(), public static void main, etc.). Only modify it if necessary to integrate new functionality.
 Use multiple lines and proper indentation when it improves readability.
 Only return the code, no explanation.
 Do not use markdown formatting or code blocks.
