@@ -1,24 +1,16 @@
-# Judge0 IDE
+# Judge0 IDE with AI Features
 
-A simple and powerful online code editor that supports multiple programming languages and provides AI-powered error assistance.
+An intelligent online code editor powered by Judge0 and OpenRouter AI. Features include:
+- AI-powered code assistance
+- Intelligent error fixing
+- Comment-to-code generation
+- Multi-language support
 
-## Features
-
-- Code execution in multiple programming languages
-- Real-time code compilation and execution
-- Integrated AI assistant for:
-  - Code error analysis and fixes
-  - Inline code suggestions
-  - Programming questions and answers
-- Dark theme with syntax highlighting
-- Input/Output console
-- File operations (open/save)
-
-## Setup and Running
+## Local Deployment
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/judge0/ide.git
+git clone https://github.com/bisman-sodhi/SocraticAI
 cd ide
 ```
 
@@ -27,43 +19,119 @@ cd ide
 npm install
 ```
 
-3. Start the server:
+3. Get an OpenRouter API Key:
+   - Visit [OpenRouter](https://openrouter.ai/keys)
+   - Create an account or sign in
+   - Generate a new API key
+   - Copy the key (starts with 'sk-or-v1-...')
+
+4. Set up your API key:
+   - Launch the application
+   - Click the model selector dropdown in the top right
+   - Select "Set API Key"
+   - Paste your OpenRouter API key
+   - Click Save
+
+5. Start the server:
 ```bash
 npm start
 ```
 
-4. Open `http://localhost:3000` in your browser
+6. Open `http://localhost:8001` in your browser
 
-## Setting up the AI Assistant
+## Features
 
-1. Get an API key from [OpenRouter](https://openrouter.ai/keys)
-2. In the IDE, click the "Configure" dropdown in the top right
-3. Select "Configure API Key"
-4. Enter your OpenRouter API key
-5. Click Save
+### 1. AI Code Assistant
 
-## Using the AI Features
+There are three ways to get AI help:
 
-### Error Assistance
-When your code has a compilation error:
-1. The error will be displayed in the output panel
-2. The AI assistant will automatically analyze the error
-3. You'll receive:
-   - An explanation of the error
-   - The exact line where the error occurred
-   - A suggested fix
-4. Click "Accept" next to the suggestion to apply the fix
+a) Using the Chat Panel:
+- Type your question in the chat input
+- Press Enter or click Send
+- View AI response in the chat panel
 
-### Code Questions
-1. Type your programming question in the chat input at the bottom
-2. Press Enter or click Send
-3. The AI will respond with relevant code examples and explanations
+b) Using Code Selection:
+- Select code in the editor
+- Click the "Ask AI" button that appears
+- Type your question about the selected code
+- Get contextual help about that specific code
 
-## Configuration
+c) Using Error Fixes:
+- When your code has compilation errors
+- AI automatically suggests fixes
+- View suggestions in both chat and inline
 
-- Select different AI models from the Configure dropdown
-- Customize editor settings like font size and theme
-- Configure compiler options for different languages
+### 2. Automatic Error Fixing
+
+When your code has compilation errors:
+1. AI analyzes the error and suggests fixes
+2. Error line is highlighted in red
+3. Suggested fix appears below in green
+4. You can:
+   - Click [Accept] to apply the fix
+   - Click [Reject] to dismiss the suggestion
+
+### 3. Comment-to-Code Generation
+
+Convert comments to working code:
+1. Write a comment describing what you want
+2. End it with `//` to trigger code generation
+   ```cpp
+   // print hello world //
+   ```
+3. AI generates the appropriate code below the comment
+4. Generated code maintains proper indentation
+
+Example comments:
+```cpp
+// create a function that adds two numbers //
+// print numbers from 1 to 10 //
+// read user input into variable x //
+```
+
+### 4. Language Support
+
+The IDE supports multiple programming languages including:
+- C++
+- Python
+- Java
+- JavaScript
+- And many more...
+
+AI features automatically adapt to the selected language.
+
+## Tips
+
+1. For best results with comment-to-code:
+   - Be specific in your comments
+   - End comments with `//` to trigger generation
+   - Comments should describe one operation
+
+2. For error fixes:
+   - Review the suggested fix in the chat panel
+   - Check the inline suggestion
+   - Accept or reject using the buttons
+
+3. For code questions:
+   - Select relevant code before asking
+   - Be specific in your questions
+   - Use the chat panel for general questions
+
+## Troubleshooting
+
+1. If AI features aren't working:
+   - Check your OpenRouter API key
+   - Ensure you have internet connection
+   - Check browser console for errors
+
+2. Rate Limits:
+   - Free tier has request limits
+   - Wait a minute between requests
+   - Consider upgrading to a paid tier
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
