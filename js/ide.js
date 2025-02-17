@@ -1,5 +1,4 @@
 import { IS_PUTER } from "./puter.js";
-import config from './config.js';
 import { DEFAULT_SOURCE, DEFAULT_STDIN } from "./default_code.js";
 import { getStoredApiKey, setStoredApiKey, getSelectedModel, setSelectedModel } from './local_storage.js';
 import { AI_MODELS, DEFAULT_MODEL } from './models.js';
@@ -105,9 +104,8 @@ var layoutConfig = {
 
 var gPuterFile;
 
-const OPENROUTER_API_KEY = config.OPENROUTER_API_KEY;
-const SITE_URL = config.SITE_URL;
-const SITE_NAME = config.SITE_NAME;
+const SITE_NAME = "Judge0 IDE";
+const SITE_URL = window.location.origin;
 
 function encode(str) {
     return btoa(unescape(encodeURIComponent(str || "")));
