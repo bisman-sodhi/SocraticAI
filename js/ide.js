@@ -1474,6 +1474,7 @@ async function handleCommentToCode(lineNumber, commentLine) {
 Comment: ${commentLine}
 
 The code should implement what the comment describes using proper formatting.
+Look at the entire code, if it includes imports, functions, etc., use them. Do not repeat code and do not use the same function name.
 Use multiple lines and proper indentation when it improves readability.
 Only return the code, no explanation.
 Do not use markdown formatting or code blocks.
