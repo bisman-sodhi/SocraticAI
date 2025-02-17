@@ -1453,7 +1453,8 @@ async function handleCommentToCode(lineNumber, commentLine) {
         const prompt = `Convert this comment to code in ${language}:
 Comment: ${commentLine}
 
-The code should be a single line that implements what the comment describes.
+The code should implement what the comment describes using proper formatting.
+Use multiple lines and proper indentation when it improves readability.
 Only return the code, no explanation.
 Do not use markdown formatting or code blocks.
 Return only the exact code that should be inserted.
@@ -1471,16 +1472,34 @@ Consider the language syntax and common patterns.`;
         console.log('Cleaned generated code:', generatedCode);
         
         const nextLineNumber = lineNumber + 1;
-        // Get indentation from the current line
         const currentLineContent = model.getLineContent(lineNumber);
         const indentation = currentLineContent.match(/^\s*/)[0];
         
         // If this is inside a block (like if, for, while), add additional indentation
         const isInsideBlock = currentLineContent.trim().startsWith('//') && 
             model.getLineContent(lineNumber - 1).trim().endsWith('{');
-        const finalIndentation = isInsideBlock ? indentation + '    ' : indentation;
+        const baseIndentation = isInsideBlock ? indentation + '    ' : indentation;
         
-        console.log('Inserting at line:', nextLineNumber, 'with indentation:', finalIndentation);
+        // Handle multi-line code with proper indentation
+        const lines = generatedCode.split('\n');
+        const formattedCode = lines.map((line, index) => {
+            // Determine proper indentation for each line
+            let lineIndentation = baseIndentation;
+            
+            // Add extra indentation for block content
+            if (index > 0) {
+                const isBlockContent = lines[0].includes('{');
+                const isClosingBrace = line.trim() === '}';
+                
+                if (isBlockContent && !isClosingBrace) {
+                    lineIndentation += '    ';  // Indent block content
+                }
+            }
+            
+            return lineIndentation + line;
+        }).join('\n');
+        
+        console.log('Inserting at line:', nextLineNumber, 'with formatted code');
         
         sourceEditor.executeEdits('comment-to-code', [{
             range: new monaco.Range(
@@ -1489,7 +1508,7 @@ Consider the language syntax and common patterns.`;
                 nextLineNumber,
                 1
             ),
-            text: finalIndentation + generatedCode + '\n'
+            text: formattedCode + '\n'
         }]);
         console.log('Code inserted successfully');
     } catch (error) {
