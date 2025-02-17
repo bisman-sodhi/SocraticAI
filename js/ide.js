@@ -582,7 +582,10 @@ document.addEventListener("DOMContentLoaded", async function () {
                     fontFamily: "JetBrains Mono",
                     minimap: {
                         enabled: true
-                    }
+                    },
+                    quickSuggestions: true,
+                    suggestOnTriggerCharacters: true,
+                    acceptSuggestionOnEnter: "on"
                 });
 
                 sourceEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run);
@@ -640,6 +643,41 @@ document.addEventListener("DOMContentLoaded", async function () {
                         
                         // Store selected text to use when sending message
                         chatInput.data('selectedCode', selectedText);
+                    }
+                });
+
+                // Add this after the sourceEditor initialization
+                sourceEditor.onDidChangeModelContent((e) => {
+                    console.log('Content changed:', e.changes);
+                    
+                    const model = sourceEditor.getModel();
+                    const changes = e.changes;
+                    
+                    for (const change of changes) {
+                        const lineNumber = change.range.startLineNumber;
+                        const lineContent = model.getLineContent(lineNumber);
+                        console.log('Processing line:', lineNumber, 'Content:', lineContent);
+                        console.log('Change text:', change.text);
+                        
+                        // Only process if this change completed a comment with '//'
+                        if (lineContent.trim().endsWith('//')) {
+                            console.log('Found potential comment end');
+                            // Verify this is a proper comment
+                            const trimmedContent = lineContent.trim();
+                            console.log('Previous content:', trimmedContent);
+                            
+                            if (trimmedContent.startsWith('//') && trimmedContent !== '//') {
+                                console.log('Valid comment detected');
+                                // Remove the trailing // before processing
+                                const cleanComment = trimmedContent.slice(2, -2).trim();
+                                console.log('Clean comment:', cleanComment);
+                                
+                                // Use setTimeout to avoid recursive decorations
+                                setTimeout(() => {
+                                    handleCommentToCode(lineNumber, cleanComment);
+                                }, 0);
+                            }
+                        }
                     }
                 });
             });
@@ -965,6 +1003,9 @@ document.addEventListener("DOMContentLoaded", async function () {
             return false;
         }
     });
+
+    // Make sendChatMessage available globally
+    window.sendChatMessage = sendChatMessage;
 });
 
 const DEFAULT_COMPILER_OPTIONS = "";
@@ -1391,5 +1432,67 @@ function parseMarkdown(text) {
     } catch (error) {
         console.error('Markdown parsing error:', error);
         return text;
+    }
+}
+
+// Add language update handler
+function updateEditorLanguage(languageName) {
+    const editorMode = getEditorLanguageMode(languageName);
+    sourceEditor.updateOptions({ language: editorMode });
+    updateLanguage(editorMode);
+}
+
+// Function to handle converting comment to code
+async function handleCommentToCode(lineNumber, commentLine) {
+    console.log('Handling comment to code:', { lineNumber, commentLine });
+    const model = sourceEditor.getModel();
+    const language = model.getLanguageId();
+    console.log('Current language:', language);
+    
+    try {
+        const prompt = `Convert this comment to code in ${language}:
+Comment: ${commentLine}
+
+The code should be a single line that implements what the comment describes.
+Only return the code, no explanation.
+Do not use markdown formatting or code blocks.
+Return only the exact code that should be inserted.
+
+Consider the language syntax and common patterns.`;
+
+        console.log('Sending prompt to AI');
+        const response = await sendChatMessage(prompt);
+        console.log('Raw AI response:', response);
+
+        const generatedCode = response
+            .replace(/```\w*\n?/g, '')
+            .replace(/\n+/g, '\n')
+            .trim();
+        console.log('Cleaned generated code:', generatedCode);
+        
+        const nextLineNumber = lineNumber + 1;
+        // Get indentation from the current line
+        const currentLineContent = model.getLineContent(lineNumber);
+        const indentation = currentLineContent.match(/^\s*/)[0];
+        
+        // If this is inside a block (like if, for, while), add additional indentation
+        const isInsideBlock = currentLineContent.trim().startsWith('//') && 
+            model.getLineContent(lineNumber - 1).trim().endsWith('{');
+        const finalIndentation = isInsideBlock ? indentation + '    ' : indentation;
+        
+        console.log('Inserting at line:', nextLineNumber, 'with indentation:', finalIndentation);
+        
+        sourceEditor.executeEdits('comment-to-code', [{
+            range: new monaco.Range(
+                nextLineNumber,
+                1,
+                nextLineNumber,
+                1
+            ),
+            text: finalIndentation + generatedCode + '\n'
+        }]);
+        console.log('Code inserted successfully');
+    } catch (error) {
+        console.error('Error in handleCommentToCode:', error);
     }
 }

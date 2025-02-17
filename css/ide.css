@@ -492,3 +492,9 @@
 .floating-chat-btn:hover {
     background: #286090;  /* Match existing hover color */
 }
+
+.ghost-text {
+    color: #6e7681 !important;
+    opacity: 0.6;
+    font-style: italic;
+}
