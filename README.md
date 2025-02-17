@@ -11,7 +11,7 @@ An intelligent online code editor powered by Judge0 and OpenRouter AI. Features 
 1. Clone the repository:
 ```bash
 git clone https://github.com/bisman-sodhi/SocraticAI
-cd ide
+cd SocraticAI
 ```
 
 2. Install dependencies:

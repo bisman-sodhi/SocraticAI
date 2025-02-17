@@ -1089,13 +1089,14 @@ async function sendChatMessage(message, selectedCode = null) {
     const codeToAnalyze = selectedCode || sourceEditor.getValue();
 
     try {
-        const response = await fetch(`${API_URL}/api/chat`, {
+        // Replace proxy server call with direct OpenRouter API call
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiKey}`,
-                "HTTP-Referer": window.location.origin,
-                "X-Title": "Judge0 IDE"
+                "HTTP-Referer": window.location.origin, // Required by OpenRouter
+                "X-Title": "Judge0 IDE", // Required by OpenRouter
             },
             body: JSON.stringify({
                 model: selectedModel,
@@ -1128,6 +1129,12 @@ async function sendChatMessage(message, selectedCode = null) {
 
 async function getAISuggestion(code, errorMessage) {
     try {
+        const apiKey = getStoredApiKey();
+        if (!apiKey) {
+            $('#judge0-api-key-modal').modal('show');
+            throw new Error("Please set your OpenRouter API key");
+        }
+
         const selectedModel = getSelectedModel();
         const prompt = `As a programming assistant powered by ${selectedModel}, analyze this code and error:
 
@@ -1153,9 +1160,35 @@ Please provide a response in this format:
 4. **Explanation**: Brief explanation of the fix
 
 Format your response exactly as shown above.`;
-        
-        const response = await sendChatMessage(prompt);
-        return response;
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+                "HTTP-Referer": window.location.origin,
+                "X-Title": "Judge0 IDE",
+            },
+            body: JSON.stringify({
+                model: selectedModel,
+                messages: [{
+                    role: "system",
+                    content: "You are an AI programming assistant. Analyze code errors and provide specific fixes."
+                }, {
+                    role: "user",
+                    content: prompt
+                }]
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('AI Suggestion API Error:', errorData);
+            throw new Error(errorData);
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
     } catch (error) {
         console.error("Error getting AI suggestion:", error);
         return "Unable to get AI suggestion at this time.";
@@ -1169,7 +1202,7 @@ function scrollToNewMessage(messageElement) {
     chatMessages.scrollTop(messageTop); // 20px padding from top
 }
 
-function handleCompileError(response) {
+async function handleCompileError(response) {
     console.log('Handling compile error:', response);
     let stderr = decode(response.compile_output || "");
     console.log('Decoded error:', stderr);
@@ -1192,47 +1225,55 @@ function handleCompileError(response) {
     $('#chat-messages').append(loadingMessage);
     scrollToNewMessage(loadingMessage);
     
-    // Get AI suggestion for the error
-    getAISuggestion(sourceEditor.getValue(), stderr)
-        .then(suggestion => {
-            // Remove loading message
-            loadingMessage.remove();
-            
-            const responseElement = $(`
-                <div class="message assistant">
-                    <div class="content">
-                        ${parseMarkdown(suggestion)}
-                    </div>
+    try {
+        const suggestion = await getAISuggestion(sourceEditor.getValue(), stderr);
+        // Remove loading message
+        loadingMessage.remove();
+        
+        const responseElement = $(`
+            <div class="message assistant">
+                <div class="content">
+                    ${parseMarkdown(suggestion)}
                 </div>
-            `);
-            $('#chat-messages').append(responseElement);
-            scrollToNewMessage(responseElement);
+            </div>
+        `);
+        $('#chat-messages').append(responseElement);
+        scrollToNewMessage(responseElement);
 
-            const { lineNumber, incorrectLine, correctedLine } = parseSuggestion(suggestion);
-            console.log('Creating suggestion for line', lineNumber);
-            
-            // Create inline suggestion
-            createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber);
-        })
-        .catch(error => {
-            // Remove loading message
-            loadingMessage.remove();
-            
-            const errorElement = $(`
-                <div class="message assistant">
-                    <div class="content">
-                        <p>Sorry, I encountered an error while suggesting a fix.</p>
-                    </div>
+        const parsedSuggestion = parseSuggestion(suggestion);
+        if (!parsedSuggestion) {
+            console.error('Could not parse suggestion:', suggestion);
+            throw new Error('Could not understand the AI suggestion format');
+        }
+
+        const { lineNumber, incorrectLine, correctedLine } = parsedSuggestion;
+        console.log('Creating suggestion for line', lineNumber);
+        
+        // Create inline suggestion
+        createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber);
+    } catch (error) {
+        // Remove loading message
+        loadingMessage.remove();
+        
+        const errorElement = $(`
+            <div class="message assistant">
+                <div class="content">
+                    <p>Error: ${error.message}</p>
+                    <p>Please try running the code again or rephrase your question.</p>
                 </div>
-            `);
-            $('#chat-messages').append(errorElement);
-            scrollToNewMessage(errorElement);
-        });
+            </div>
+        `);
+        $('#chat-messages').append(errorElement);
+        scrollToNewMessage(errorElement);
+    }
 }
 
 function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) {
-    // Get the editor model
     const model = sourceEditor.getModel();
+    const indentation = model.getLineContent(lineNumber).match(/^\s*/)[0];
+    
+    // Get total line count to prevent going beyond file boundaries
+    const totalLines = model.getLineCount();
     
     // Create decorations for the error line
     const errorDecoration = {
@@ -1249,19 +1290,14 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
         }
     };
 
-    // Insert the suggestion line after the error line
-    const indentation = model.getLineContent(lineNumber).match(/^\s*/)[0];
-    const suggestionText = '\n' + indentation + correctedLine;
-    
-    // Insert the suggestion line
+    // Insert suggestion as a new line after the error line
+    const insertRange = new monaco.Range(
+        lineNumber + 1, 1,
+        lineNumber + 1, 1
+    );
     sourceEditor.executeEdits('suggestion', [{
-        range: new monaco.Range(
-            lineNumber,
-            model.getLineMaxColumn(lineNumber),
-            lineNumber,
-            model.getLineMaxColumn(lineNumber)
-        ),
-        text: suggestionText
+        range: insertRange,
+        text: indentation + correctedLine + '\n'
     }]);
 
     // Create decoration for the suggestion line
@@ -1290,24 +1326,15 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
     // Handle button clicks
     sourceEditor.onMouseDown((e) => {
         const element = e.target.element;
-        console.log('Click detected on element:', element);
         if (!element?.classList.contains('suggestion-buttons')) return;
         
         const text = element.textContent;
-        console.log('Button text:', text);
-        
-        // Get click position using the original event
         const rect = element.getBoundingClientRect();
         const relativeX = e.event.browserEvent.clientX - rect.left;
-        console.log('Click position:', relativeX);
-        
-        // The first half of the element is Accept, second half is Reject
         const isAcceptClick = relativeX < rect.width / 2;
-        console.log('Is Accept click:', isAcceptClick);
 
         if (isAcceptClick) {
-            console.log('Accept button clicked');
-            // Accept code - replace error line with corrected line
+            // Accept code - replace only the error line
             sourceEditor.executeEdits('suggestion', [{
                 range: new monaco.Range(
                     lineNumber,
@@ -1317,8 +1344,7 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
                 ),
                 text: indentation + correctedLine
             }]);
-            
-            // Remove the suggestion line
+            // Remove the suggestion line in a separate edit
             sourceEditor.executeEdits('suggestion', [{
                 range: new monaco.Range(
                     lineNumber + 1,
@@ -1328,15 +1354,8 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
                 ),
                 text: ''
             }]);
-
-            // Remove all decorations since we accepted the fix
-            sourceEditor.deltaDecorations(decorationIds, []);
         } else {
-            console.log('Reject button clicked');
-            console.log('Current line number:', lineNumber);
-            console.log('Current decorations:', decorationIds);
-
-            // Only remove the suggestion line
+            // Reject - only remove the suggestion line
             sourceEditor.executeEdits('suggestion', [{
                 range: new monaco.Range(
                     lineNumber + 1,
@@ -1346,12 +1365,10 @@ function createInlineSuggestionWidget(incorrectLine, correctedLine, lineNumber) 
                 ),
                 text: ''
             }]);
-            console.log('Suggestion line removed');
-            
-            // Remove all decorations since we rejected the fix
-            sourceEditor.deltaDecorations(decorationIds, []);
-            console.log('Decorations updated');
         }
+        
+        // Remove decorations
+        sourceEditor.deltaDecorations(decorationIds, []);
     });
 }
 
@@ -1444,12 +1461,17 @@ function updateEditorLanguage(languageName) {
 
 // Function to handle converting comment to code
 async function handleCommentToCode(lineNumber, commentLine) {
-    console.log('Handling comment to code:', { lineNumber, commentLine });
-    const model = sourceEditor.getModel();
-    const language = model.getLanguageId();
-    console.log('Current language:', language);
-    
     try {
+        const apiKey = getStoredApiKey();
+        if (!apiKey) {
+            $('#judge0-api-key-modal').modal('show');
+            throw new Error("Please set your OpenRouter API key");
+        }
+
+        const model = sourceEditor.getModel();
+        const language = model.getLanguageId();
+        const selectedModel = getSelectedModel();
+        
         const prompt = `Convert this comment to code in ${language}:
 Comment: ${commentLine}
 
@@ -1461,11 +1483,34 @@ Return only the exact code that should be inserted.
 
 Consider the language syntax and common patterns.`;
 
-        console.log('Sending prompt to AI');
-        const response = await sendChatMessage(prompt);
-        console.log('Raw AI response:', response);
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
+                "HTTP-Referer": window.location.origin,
+                "X-Title": "Judge0 IDE",
+            },
+            body: JSON.stringify({
+                model: selectedModel,
+                messages: [{
+                    role: "system",
+                    content: `You are a code generation assistant. Generate clean, efficient ${language} code.`
+                }, {
+                    role: "user",
+                    content: prompt
+                }]
+            })
+        });
 
-        const generatedCode = response
+        if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Comment to Code API Error:', errorData);
+            throw new Error(errorData);
+        }
+
+        const data = await response.json();
+        const generatedCode = data.choices[0].message.content
             .replace(/```\w*\n?/g, '')
             .replace(/\n+/g, '\n')
             .trim();
@@ -1514,4 +1559,5 @@ Consider the language syntax and common patterns.`;
     } catch (error) {
         console.error('Error in handleCommentToCode:', error);
     }
+    return apiKey;
 }
